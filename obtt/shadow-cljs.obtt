@@ -1,0 +1,1424 @@
+# -*- mode: org -*-
+#+TITLE: obtt-fulcro
+
+Taken from the Fulcro project template in github.
+
+* Variables
+
+- Name :: $1
+- Description :: $2
+
+* README
+#+BEGIN_SRC org :tangle ./README.org
+#+TITLE: $1
+
+$2
+#+END_SRC
+
+* License
+I default to MIT
+#+BEGIN_SRC fundamental :tangle ./LICENSE
+MIT License
+
+Copyright (c) 2020 Fulcrologic, LLC
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+#+END_SRC
+* Project files
+** gitignore
+#+BEGIN_SRC fundamental :tangle ./.gitignore
+*~
+*.iml
+*.log
+*.sw?
+*.swp
+*jar
+.DS_Store
+.cljs_rhino_repl
+.idea
+.lein*
+.lein-deps-sum
+.lein-env
+.lein-failures
+.lein-plugins/
+.lein-repl-history
+.nrepl*
+.nrepl-port
+.repl
+bin/publish-local
+checkouts
+classes
+compiled
+datahub.log*
+docs/.asciidoctor/
+docs/basic-db.png
+docs/mutations.png
+examples/calendar/resources/public/js/specs
+examples/calendar/src/quiescent_model
+examples/todo/src/quiescent_model
+figwheel_server.log
+lib
+node_modules
+out
+pom.xml
+pom.xml*
+pom.xml.asc
+resources/private/js
+resources/public/js
+resources/public/js/cards
+resources/public/js/test
+target
+resources/public/getting-started.html
+resources/public/.asciidoctor/
+resources/public/*.png
+package-lock.json
+docs/_site
+docs/.sass-cache
+docs/Gemfile.lock
+docs/js/[a-fh-su-z]*
+docs/js/goog
+docs/js/garden
+old-docs/.asciidoctor
+old-docs/plumbing.png
+DevelopersGuide.html
+docs/.jekyll-metadata
+.floo
+.flooignore
+.asciidoctor
+/ReferenceGuide.html
+.cpcache
+.shadow-cljs
+resources/public/workspaces/*
+!resources/public/workspaces/index.html
+#+END_SRC
+** dir-locals
+#+BEGIN_SRC emacs-lisp :tangle ./.dir-locals.el
+((nil . ((cider-clojure-cli-parameters . "-A:dev -J-Dtrace -J-Dghostwheel.enabled=true -m nrepl.cmdline --middleware '%s'"))))
+#+END_SRC
+** Makefile
+#+BEGIN_SRC Makefile :tangle ./Makefile
+test:
+	npm install
+	npx shadow-cljs compile ci-tests
+	npx karma start --single-run
+	clj -A:dev:clj-tests
+
+.PHONY: test
+
+#+END_SRC
+** deps.edn
+#+BEGIN_SRC clojure :tangle ./deps.edn
+{:paths   ["src/main" "resources"]
+
+ :deps    {org.clojure/clojure                 {:mvn/version "1.10.1"}
+           bidi                                {:mvn/version "2.1.6"}
+           bk/ring-gzip                        {:mvn/version "0.3.0"}
+           com.taoensso/timbre                 {:mvn/version "4.10.0"}
+           com.taoensso/tufte                  {:mvn/version "2.1.0-RC4"}
+           com.wsscode/pathom                  {:mvn/version "2.2.26"}
+           com.fulcrologic/fulcro              {:mvn/version "3.0.9"}
+           com.fulcrologic/fulcro-garden-css   {:mvn/version "3.0.7"}
+           com.fulcrologic/semantic-ui-wrapper {:mvn/version "1.0.0"}
+           com.fulcrologic/guardrails          {:mvn/version "0.0.9"}
+           garden                              {:mvn/version "1.3.9"}
+           hiccup                              {:mvn/version "1.0.5"}
+           http-kit                            {:mvn/version "2.3.0"}
+           mount                               {:mvn/version "0.1.12"}
+           org.clojure/core.async              {:mvn/version "0.4.500"}
+
+           ;; To simulate Datomic on the back-end
+           datascript                          {:mvn/version "0.18.4"}
+
+           ring/ring-core                      {:mvn/version "1.7.1"}
+           ring/ring-defaults                  {:mvn/version "0.3.2"}}
+
+ :aliases {:clj-tests {:extra-paths ["src/test"]
+                       :main-opts   ["-m" "kaocha.runner"]
+                       :extra-deps  {lambdaisland/kaocha {:mvn/version "0.0-529"}}}
+
+           ;; See https://github.com/clojure-emacs/cider-nrepl/blob/master/deps.edn for Emacs support
+           :dev       {:extra-paths ["src/test" "src/dev" "src/workspaces"]
+                       :jvm-opts    ["-XX:-OmitStackTraceInFastThrow"]
+                       :extra-deps  {org.clojure/clojurescript   {:mvn/version "1.10.520"}
+                                     thheller/shadow-cljs        {:mvn/version "2.8.58"}
+                                     expound                     {:mvn/version "0.7.2"}
+                                     fulcrologic/fulcro-spec     {:mvn/version "3.1.4"}
+                                     binaryage/devtools          {:mvn/version "0.9.10"}
+                                     com.github.awkay/workspaces {:mvn/version "1.0.0-RC2"},
+                                     org.clojure/tools.namespace {:mvn/version "0.3.1"}}}}}
+
+#+END_SRC
+** guardrails.edn
+#+BEGIN_SRC clojure :tangle ./guardrails.edn
+{:defn-macro nil
+ :throw?     true
+ :emit-spec? false
+ :expound    {:show-valid-values? true
+              :print-specs?       true}}
+#+END_SRC
+** shadow-cljs,edn
+#+BEGIN_SRC clojure :tangle ./shadow-cljs.edn
+{:deps   {:aliases [:dev]}
+ :nrepl  {:port 9000}
+ :builds {:main       {:target     :browser
+                       :output-dir "resources/public/js/main"
+                       :asset-path "/js/main"
+
+                       :modules    {:main {:init-fn app.client/init
+                                           :entries [app.client]}}
+                       ;; guardrails checks only during dev
+                       :dev        {:compiler-options
+                                    {:external-config {:guardrails {}}}}
+
+                       :devtools   {:after-load app.client/refresh
+                                    :preloads   [com.fulcrologic.fulcro.inspect.preload app.development-preload]}}
+
+          :test       {:target           :browser-test
+                       :test-dir         "resources/public/js/test"
+                       :ns-regexp        "-test$"
+                       ;; static required for mocking to work
+                       :compiler-options {:static-fns      false
+                                          :external-config {:guardrails {}}}
+                       :devtools         {:http-port          8022
+                                          :http-resource-root "public"
+                                          :http-root          "resources/public/js/test"}}
+
+          :ci-tests   {:target           :karma
+                       :js-options       {:js-provider :shadow}
+                       :compiler-options {:static-fns false} ; required for mocking to work
+                       :output-to        "target/ci.js"
+                       :ns-regexp        "-test$"}
+
+          :workspaces {:target     nubank.workspaces.shadow-cljs.target
+                       :ns-regexp  "-(test|ws)$"
+                       :output-dir "resources/public/workspaces/js"
+                       :asset-path "/workspaces/js"
+                       :devtools   {:preloads           [com.fulcrologic.fulcro.inspect.preload]
+                                    :http-root          "resources/public/workspaces"
+                                    :http-port          8023
+                                    :http-resource-root "."}}}}
+
+#+END_SRC
+** tests.edn
+#+BEGIN_SRC clojure :tangle ./tests.edn
+#kaocha/v1
+    {:tests    [{:id           :unit
+                 :ns-patterns  ["-test$"]
+                 :test-paths   ["src/test"]
+                 :skip-meta    [:integration]
+                 :source-paths ["src/main"]}]
+     :reporter [fulcro-spec.reporters.terminal/fulcro-report]
+     :plugins  [:kaocha.plugin/randomize
+                :kaocha.plugin/filter
+                :kaocha.plugin/capture-output]}
+
+#+END_SRC
+** package.json
+#+BEGIN_SRC json :tangle ./package.json
+{
+    "name": "$1",
+    "version": "1.0.0",
+    "description": "$2",
+    "private": true,
+    "dependencies": {
+        "highlight.js": "^9.13.1",
+        "react-grid-layout": "^0.16.6",
+        "react-icons": "^2.2.7",
+        "reakit": "^0.11.2"
+    },
+    "scripts": {
+        "client/main": "npx shadow-cljs watch :main",
+        "client/workspaces": "npx shadow-cljs watch :workspaces",
+        "client/test": "npx shadow-cljs watch :test",
+        "client/cljs": "shadow-cljs cljs-repl :main",
+        "client/clj": "shadow-cljs clj-repl",
+        "client/server": "npx shadow-cljs server",
+        "client/nodejs": "npx shadow-cljs node-repl",
+        "server": "clojure -A:dev -J-Dtrace -J-Dghostwheel.enabled=true",
+        "start": "npx run-p client/server server"
+    },
+    "devDependencies": {
+        "intl-messageformat": "^2.2.0",
+        "karma": "^3.1.1",
+        "karma-chrome-launcher": "^2.2.0",
+        "karma-cljs-test": "^0.1.0",
+        "npm-run-all": "^4.1.5",
+        "react": "^16.6.8",
+        "react-dom": "^16.6.8",
+        "shadow-cljs": "^2.8.58",
+        "showdown": "^1.8.7"
+    },
+    "author": "",
+    "license": "MIT"
+}
+#+END_SRC
+** karma.conf.js
+#+BEGIN_SRC javascript :tangle ./karma.conf.js
+module.exports = function (config) {
+    config.set({
+        browsers: ['ChromeHeadless'],
+        // The directory where the output file lives
+        basePath: 'target',
+        // The file itself
+        files: ['ci.js'],
+        frameworks: ['cljs-test'],
+        plugins: ['karma-cljs-test', 'karma-chrome-launcher'],
+        colors: true,
+        logLevel: config.LOG_INFO,
+        client: {
+            args: ["shadow.test.karma.init"],
+            singleRun: true
+        }
+    })
+};
+
+#+END_SRC
+* Resources
+** favicon.ico
+#+BEGIN_SRC base64 :tangle ./resources/public/favicon.ico.b64
+AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAQAABILAAASCwAAAAAA
+AAAAAAD/////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////7+/v/6+vr/+Pj4//f39//29vb/
+9vb2//X19f/19fX/9vb2//b29v/39/f/+Pj4//n5+f/9/f3///////7////9/v3//P38//z9/P/9
+/f3//f39//z7+//8/f3//Pz8//z8/P/9/f3//f39//39/P/9/Pz//v39/////v//////////////
+///+//7//v/////+/v///////v39///+/v///////////////////v7/////////////////+f36
+/3nMmP9xyZL/8/v2///+////////8ePc/8WMbv/Wrpn///////7+/f////7//vz7/9WtmP/RpIz/
++/b0/9rx4v8nrFj/IqpU/2LBhP/3//3/8+Pd/7+DYv+3cUv/wYZm//37+v///////v38/9Gljf+4
+c07/tnBL/+za0f//////mNiw/yqsWP8jsVz/da53/8mCZf+1dlD/vX9d/+7c0////////vz8/9Gl
+jf+5dVH/uXVR/9exnP///////v7+//////+P2K3/OqBS/8emi//Kj3T/yH9h//Dd1f///////vz8
+/9Gljf+5dVH/uXVR/9Wtl/////////////7////+/f3//v///7TBof/jva3/zKaN/3qqdP/y//3/
+//3+/9Gljf+5dVH/uXVR/9WtmP///////v79///+/v////////////z+/f//////t8Ch/z+eUv8f
+slv/ZsKG/9SjjP+5dlL/uXVR/9WtmP///////v79///+/v/////////////////+/////f79////
+//+P2K3/JahT/5Kcbf/Jim3/tnFM/9WtmP///////v79///+/v//////////////////////////
+///////+/f3//////6PGoP/YtaH/3rmo/9Gmjv///////v79///+/v//////////////////////
+//////////////////////3+/f//////3cKx/9u6qP/+/v3///7+///+/v//////////////////
+////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAA==
+#+END_SRC
+** index.html
+#+BEGIN_SRC html :tangle ./resources/public/workspaces/index.html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Client - Workspaces</title>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+</head>
+<body>
+<div id="app"></div>
+<!-- you might need to change the js path depending on your configuration -->
+<script src="js/main.js" type="text/javascript"></script>
+</body>
+</html>
+#+END_SRC
+* Sources
+** Workspaces
+*** demo_ws.cljs
+#+BEGIN_SRC clojure :tangle ./src/workspaces/app/demo_ws.cljs
+(ns app.demo-ws
+  (:require [com.fulcrologic.fulcro.components :as fp]
+            [nubank.workspaces.core :as ws]
+            [nubank.workspaces.card-types.fulcro3 :as ct.fulcro]
+            [com.fulcrologic.fulcro.mutations :as fm]
+            [com.fulcrologic.fulcro.dom :as dom]))
+
+(fp/defsc FulcroDemo
+  [this {:keys [counter]}]
+  {:initial-state (fn [_] {:counter 0})
+   :ident         (fn [] [::id "singleton"])
+   :query         [:counter]}
+  (dom/div
+    (str "Fulcro counter demo [" counter "]")
+    (dom/button {:onClick #(fm/set-value! this :counter (inc counter))} "+")))
+
+(ws/defcard fulcro-demo-card
+  (ct.fulcro/fulcro-card
+    {::ct.fulcro/root       FulcroDemo
+     ::ct.fulcro/wrap-root? true}))
+
+#+END_SRC
+** Test
+*** account_test.clj
+#+BEGIN_SRC clojure :tangle ./src/test/app/model/account_test.clj
+(ns app.model.account-test
+  (:require
+    [app.server-components.pathom :refer [build-parser]]
+    [app.model.account :as acct]
+    [app.util :refer [uuid]]
+    [clojure.test :refer [deftest is]]
+    [fulcro-spec.core :refer [specification provided behavior assertions component provided!]]
+    [app.model.mock-database :as db]
+    [datascript.core :as d]
+    [taoensso.timbre :as log]))
+
+(defn seeded-setup []
+  (let [conn (db/new-database)]
+    (d/transact conn [{:account/id (uuid 1) :account/active? false}
+                      {:account/id (uuid 2) :account/active? true :account/email "account@example.net"}
+                      {:account/id (uuid 3) :account/active? true}])
+    {:conn conn
+     :db   @conn}))
+
+(deftest all-account-ids-test
+  (let [{:keys [db]} (seeded-setup)
+        ids (acct/all-account-ids db)]
+    (assertions
+      "can find the active account IDs that are in the database given"
+      (set ids) => #{(uuid 2) (uuid 3)})))
+
+(deftest get-account-test
+  (let [{:keys [db]} (seeded-setup)
+        entity (acct/get-account db (uuid 2) [:account/email])]
+    (assertions
+      "can find the requested account details"
+      entity => {:account/email "account@example.net"})))
+
+(deftest parser-integration-test
+  (component "The pathom parser for the server"
+    (let [{:keys [conn]} (seeded-setup)
+          parser (build-parser conn)]
+      (assertions
+        "Pulls details for all active accounts"
+        (parser {} [{:all-accounts [:account/email]}])
+        => {:all-accounts [{}
+                           {:account/email "account@example.net"}]})))
+
+  (provided! "The database contains the account"
+    (acct/get-account db uuid subquery) => (select-keys
+                                             {:account/id      uuid
+                                              :account/active? false
+                                              :account/cruft   22
+                                              :account/email   "boo@bah.com"} subquery)
+
+    (component "The pathom parser for the server"
+      (let [{:keys [conn]} (seeded-setup)
+            parser (build-parser conn)]
+        (assertions
+          "Can pull the details of an account"
+          (parser {} [{[:account/id (uuid 2)] [:account/id :account/email :account/active?]}])
+          => {[:account/id (uuid 2)] {:account/id      (uuid 2)
+                                      :account/email   "boo@bah.com"
+                                      :account/active? false}})))))
+
+#+END_SRC
+*** sample_test.cljc
+#+BEGIN_SRC clojure :tangle ./src/test/app/sample_test.cljc
+(ns app.sample-test
+  (:require
+    [clojure.test :refer [deftest]]
+    [fulcro-spec.core :refer [specification provided behavior assertions]]))
+
+; Tests for both client and server
+(deftest sample-test
+  (behavior "addition computes addition correctly"
+    (assertions
+      "with positive integers"
+      (+ 1 5 3) => 9
+      "with negative integers"
+      (+ -1 -3 -5) => -9
+      "with a mix of signed integers"
+      (+ +5 -3) => 2)))
+
+#+END_SRC
+** Dev
+*** user.clj
+#+BEGIN_SRC clojure :tangle ./src/dev/user.clj
+(ns user
+  (:require
+    [clojure.tools.namespace.repl :as tools-ns :refer [set-refresh-dirs]]
+    [expound.alpha :as expound]
+    [clojure.spec.alpha :as s]
+    [mount.core :as mount]
+    ;; this is the top-level dependent component...mount will find the rest via ns requires
+    [app.server-components.http-server :refer [http-server]]))
+
+;; ==================== SERVER ====================
+(set-refresh-dirs "src/main" "src/dev" "src/test")
+;; Change the default output of spec to be more readable
+(alter-var-root #'s/*explain-out* (constantly expound/printer))
+
+(defn start
+  "Start the web server"
+  [] (mount/start))
+
+(defn stop
+  "Stop the web server"
+  [] (mount/stop))
+
+(defn restart
+  "Stop, reload code, and restart the server. If there is a compile error, use:
+
+  \`\`\`
+  (tools-ns/refresh)
+  \`\`\`
+
+  to recompile, and then use \`start\` once things are good."
+  []
+  (stop)
+  (tools-ns/refresh :after 'user/start))
+
+
+#+END_SRC
+** Main
+*** App
+**** App
+***** application.cljs
+#+BEGIN_SRC clojure :tangle ./src/main/app/application.cljs
+(ns app.application
+  (:require [com.fulcrologic.fulcro.networking.http-remote :as net]
+            [com.fulcrologic.fulcro.application :as app]
+            [com.fulcrologic.fulcro.components :as comp]))
+
+(def secured-request-middleware
+  ;; The CSRF token is embedded via server_components/html.clj
+  (->
+    (net/wrap-csrf-token (or js/fulcro_network_csrf_token "TOKEN-NOT-IN-HTML!"))
+    (net/wrap-fulcro-request)))
+
+(defonce SPA (app/fulcro-app
+               {;; This ensures your client can talk to a CSRF-protected server.
+                ;; See middleware.clj to see how the token is embedded into the HTML
+                :remotes {:remote (net/fulcro-http-remote
+                                    {:url                "/api"
+                                     :request-middleware secured-request-middleware})}}))
+
+(comment
+  (-> SPA (::app/runtime-atom) deref ::app/indexes))
+
+#+END_SRC
+***** server_main.clj
+#+BEGIN_SRC clojure :tangle ./src/main/app/server_main.clj
+(ns app.server-main
+  (:require
+    [mount.core :as mount]
+    app.server-components.http-server)
+  (:gen-class))
+
+;; This is a separate file for the uberjar only. We control the server in dev mode from src/dev/user.clj
+(defn -main [& args]
+  (mount/start-with-args {:config "config/prod.edn"}))
+
+#+END_SRC
+***** client.cljs
+#+BEGIN_SRC clojure :tangle ./src/main/app/client.cljs
+(ns app.client
+  (:require
+    [app.application :refer [SPA]]
+    [app.ui.root :as root]
+    [com.fulcrologic.fulcro.application :as app]
+    [app.ui.root :as root]
+    [com.fulcrologic.fulcro.networking.http-remote :as net]
+    [com.fulcrologic.fulcro.data-fetch :as df]
+    [com.fulcrologic.fulcro.ui-state-machines :as uism]
+    [com.fulcrologic.fulcro.components :as comp]
+    [com.fulcrologic.fulcro-css.css-injection :as cssi]
+    [app.model.session :as session]
+    [taoensso.timbre :as log]
+    [com.fulcrologic.fulcro.algorithms.denormalize :as fdn]
+    [com.fulcrologic.fulcro.algorithms.merge :as merge]
+    [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
+    [com.fulcrologic.fulcro.inspect.inspect-client :as inspect]))
+
+(defn ^:export refresh []
+  (log/info "Hot code Remount")
+  (cssi/upsert-css "componentcss" {:component root/Root})
+  (app/mount! SPA root/Root "app"))
+
+(defn ^:export init []
+  (log/info "Application starting.")
+  (cssi/upsert-css "componentcss" {:component root/Root})
+  ;(inspect/app-started! SPA)
+  (app/set-root! SPA root/Root {:initialize-state? true})
+  (dr/initialize! SPA)
+  (log/info "Starting session machine.")
+  (uism/begin! SPA session/session-machine ::session/session
+    {:actor/login-form      root/Login
+     :actor/current-session root/Session})
+  (app/mount! SPA root/Root "app" {:initialize-state? false}))
+
+(comment
+  (inspect/app-started! SPA)
+  (app/mounted? SPA)
+  (app/set-root! SPA root/Root {:initialize-state? true})
+  (uism/begin! SPA session/session-machine ::session/session
+    {:actor/login-form      root/Login
+     :actor/current-session root/Session})
+
+  (reset! (::app/state-atom SPA) {})
+
+  (merge/merge-component! SPA root/Settings {:account/time-zone "America/Los_Angeles"
+                                             :account/real-name "Joe Schmoe"})
+  (dr/initialize! SPA)
+  (app/current-state SPA)
+  (dr/change-route SPA ["settings"])
+  (app/mount! SPA root/Root "app")
+  (comp/get-query root/Root {})
+  (comp/get-query root/Root (app/current-state SPA))
+
+  (-> SPA ::app/runtime-atom deref ::app/indexes)
+  (comp/class->any SPA root/Root)
+  (let [s (app/current-state SPA)]
+    (fdn/db->tree [{[:component/id :login] [:ui/open? :ui/error :account/email
+                                            {[:root/current-session '_] (comp/get-query root/Session)}
+                                            [::uism/asm-id ::session/session]]}] {} s)))
+
+#+END_SRC
+***** development_preload.cljs
+#+BEGIN_SRC clojure :tangle ./src/main/app/development_preload.cljs
+(ns app.development-preload
+  (:require
+    [com.fulcrologic.fulcro.algorithms.timbre-support :as ts]
+    [taoensso.timbre :as log]))
+
+(js/console.log "Turning logging to :debug (in app.development-preload)")
+(log/set-level! :debug)
+(log/merge-config! {:output-fn ts/prefix-output-fn
+                    :appenders {:console (ts/console-appender)}})
+
+#+END_SRC
+***** util.cljc
+#+BEGIN_SRC clojure :tangle ./src/main/app/util.cljc
+(ns app.util
+  #?(:cljs (:refer-clojure :exclude [uuid]))
+  (:require [com.fulcrologic.guardrails.core :refer [>defn]]
+            [clojure.spec.alpha :as s]))
+
+(>defn uuid
+  "Generate a UUID the same way via clj/cljs.  Without args gives random UUID. With args, builds UUID based on input (which
+  is useful in tests)."
+  #?(:clj ([] [=> uuid?] (java.util.UUID/randomUUID)))
+  #?(:clj ([int-or-str]
+           [(s/or :i int? :s string?) => uuid?]
+           (if (int? int-or-str)
+             (java.util.UUID/fromString
+               (format "ffffffff-ffff-ffff-ffff-%012d" int-or-str))
+             (java.util.UUID/fromString int-or-str))))
+  #?(:cljs ([] [=> uuid?] (random-uuid)))
+  #?(:cljs ([& args]
+            [(s/* any?) => uuid?]
+            (cljs.core/uuid (apply str args)))))
+
+#+END_SRC
+**** Server Components
+***** config.clj
+#+BEGIN_SRC clojure :tangle ./src/main/app/server_components/config.clj
+(ns app.server-components.config
+  (:require
+    [mount.core :refer [defstate args]]
+    [com.fulcrologic.fulcro.server.config :refer [load-config!]]
+    [taoensso.timbre :as log]))
+
+
+(defn configure-logging! [config]
+  (let [{:keys [taoensso.timbre/logging-config]} config]
+    (log/info "Configuring Timbre with " logging-config)
+    (log/merge-config! logging-config)))
+
+
+(defstate config
+  :start (let [{:keys [config] :or {config "config/dev.edn"}} (args)
+               configuration (load-config! {:config-path config})]
+           (log/info "Loaded config" config)
+           (configure-logging! configuration)
+           configuration))
+
+
+#+END_SRC
+***** http_server.clj
+#+BEGIN_SRC clojure :tangle ./src/main/app/server_components/http_server.clj
+(ns app.server-components.http-server
+  (:require
+    [app.server-components.config :refer [config]]
+    [app.server-components.middleware :refer [middleware]]
+    [mount.core :refer [defstate]]
+    [clojure.pprint :refer [pprint]]
+    [org.httpkit.server :as http-kit]
+    [taoensso.timbre :as log]))
+
+(defstate http-server
+  :start
+  (let [cfg (::http-kit/config config)]
+    (log/info "Starting HTTP Server with config " (with-out-str (pprint cfg)))
+    (http-kit/run-server middleware cfg))
+  :stop (http-server))
+
+#+END_SRC
+***** middleware.clj
+#+BEGIN_SRC clojure :tangle ./src/main/app/server_components/middleware.clj
+(ns app.server-components.middleware
+  (:require
+    [app.server-components.config :refer [config]]
+    [app.server-components.pathom :refer [parser]]
+    [mount.core :refer [defstate]]
+    [com.fulcrologic.fulcro.server.api-middleware :refer [handle-api-request
+                                                          wrap-transit-params
+                                                          wrap-transit-response]]
+    [ring.middleware.defaults :refer [wrap-defaults]]
+    [ring.middleware.gzip :refer [wrap-gzip]]
+    [ring.util.response :refer [response file-response resource-response]]
+    [ring.util.response :as resp]
+    [hiccup.page :refer [html5]]
+    [taoensso.timbre :as log]))
+
+(def ^:private not-found-handler
+  (fn [req]
+    {:status  404
+     :headers {"Content-Type" "text/plain"}
+     :body    "NOPE"}))
+
+
+(defn wrap-api [handler uri]
+  (fn [request]
+    (if (= uri (:uri request))
+      (handle-api-request
+        (:transit-params request)
+        (fn [tx] (parser {:ring/request request} tx)))
+      (handler request))))
+
+;; ================================================================================
+;; Dynamically generated HTML. We do this so we can safely embed the CSRF token
+;; in a js var for use by the client.
+;; ================================================================================
+(defn index [csrf-token]
+  (log/debug "Serving index.html")
+  (html5
+    [:html {:lang "en"}
+     [:head {:lang "en"}
+      [:title "Application"]
+      [:meta {:charset "utf-8"}]
+      [:meta {:name "viewport" :content "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"}]
+      [:link {:href "https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.4.1/semantic.min.css"
+              :rel  "stylesheet"}]
+      [:link {:rel "shortcut icon" :href "data:image/x-icon;," :type "image/x-icon"}]
+      [:script (str "var fulcro_network_csrf_token = '" csrf-token "';")]]
+     [:body
+      [:div#app]
+      [:script {:src "js/main/main.js"}]]]))
+
+;; ================================================================================
+;; Workspaces can be accessed via shadow's http server on http://localhost:8023/workspaces.html
+;; but that will not allow full-stack fulcro cards to talk to your server. This
+;; page embeds the CSRF token, and is at \`/wslive.html\` on your server (i.e. port 3000).
+;; ================================================================================
+(defn wslive [csrf-token]
+  (log/debug "Serving wslive.html")
+  (html5
+    [:html {:lang "en"}
+     [:head {:lang "en"}
+      [:title "devcards"]
+      [:meta {:charset "utf-8"}]
+      [:meta {:name "viewport" :content "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"}]
+      [:link {:href "https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.4.1/semantic.min.css"
+              :rel  "stylesheet"}]
+      [:link {:rel "shortcut icon" :href "data:image/x-icon;," :type "image/x-icon"}]
+      [:script (str "var fulcro_network_csrf_token = '" csrf-token "';")]]
+     [:body
+      [:div#app]
+      [:script {:src "workspaces/js/main.js"}]]]))
+
+(defn wrap-html-routes [ring-handler]
+  (fn [{:keys [uri anti-forgery-token] :as req}]
+    (cond
+      (#{"/" "/index.html"} uri)
+      (-> (resp/response (index anti-forgery-token))
+        (resp/content-type "text/html"))
+
+      ;; See note above on the \`wslive\` function.
+      (#{"/wslive.html"} uri)
+      (-> (resp/response (wslive anti-forgery-token))
+        (resp/content-type "text/html"))
+
+      :else
+      (ring-handler req))))
+
+(defstate middleware
+  :start
+  (let [defaults-config (:ring.middleware/defaults-config config)
+        legal-origins   (get config :legal-origins #{"localhost"})]
+    (-> not-found-handler
+      (wrap-api "/api")
+      wrap-transit-params
+      wrap-transit-response
+      (wrap-html-routes)
+      ;; If you want to set something like session store, you'd do it against
+      ;; the defaults-config here (which comes from an EDN file, so it can't have
+      ;; code initialized).
+      ;; E.g. (wrap-defaults (assoc-in defaults-config [:session :store] (my-store)))
+      (wrap-defaults defaults-config)
+      wrap-gzip)))
+
+#+END_SRC
+***** pathon.clj
+#+BEGIN_SRC clojure :tangle ./src/main/app/server_components/pathom.clj
+(ns app.server-components.pathom
+  (:require
+    [mount.core :refer [defstate]]
+    [taoensso.timbre :as log]
+    [com.wsscode.pathom.connect :as pc]
+    [com.wsscode.pathom.core :as p]
+    [com.wsscode.common.async-clj :refer [let-chan]]
+    [clojure.core.async :as async]
+    [app.model.account :as acct]
+    [app.model.session :as session]
+    [app.server-components.config :refer [config]]
+    [app.model.mock-database :as db]))
+
+(pc/defresolver index-explorer [env _]
+  {::pc/input  #{:com.wsscode.pathom.viz.index-explorer/id}
+   ::pc/output [:com.wsscode.pathom.viz.index-explorer/index]}
+  {:com.wsscode.pathom.viz.index-explorer/index
+   (-> (get env ::pc/indexes)
+     (update ::pc/index-resolvers #(into {} (map (fn [[k v]] [k (dissoc v ::pc/resolve)])) %))
+     (update ::pc/index-mutations #(into {} (map (fn [[k v]] [k (dissoc v ::pc/mutate)])) %)))})
+
+(def all-resolvers [acct/resolvers session/resolvers index-explorer])
+
+(defn preprocess-parser-plugin
+  "Helper to create a plugin that can view/modify the env/tx of a top-level request.
+
+  f - (fn [{:keys [env tx]}] {:env new-env :tx new-tx})
+
+  If the function returns no env or tx, then the parser will not be called (aborts the parse)"
+  [f]
+  {::p/wrap-parser
+   (fn transform-parser-out-plugin-external [parser]
+     (fn transform-parser-out-plugin-internal [env tx]
+       (let [{:keys [env tx] :as req} (f {:env env :tx tx})]
+         (if (and (map? env) (seq tx))
+           (parser env tx)
+           {}))))})
+
+(defn log-requests [{:keys [env tx] :as req}]
+  (log/debug "Pathom transaction:" (pr-str tx))
+  req)
+
+(defn build-parser [db-connection]
+  (let [real-parser (p/parallel-parser
+                      {::p/mutate  pc/mutate-async
+                       ::p/env     {::p/reader               [p/map-reader pc/parallel-reader
+                                                              pc/open-ident-reader p/env-placeholder-reader]
+                                    ::p/placeholder-prefixes #{">"}}
+                       ::p/plugins [(pc/connect-plugin {::pc/register all-resolvers})
+                                    (p/env-wrap-plugin (fn [env]
+                                                         ;; Here is where you can dynamically add things to the resolver/mutation
+                                                         ;; environment, like the server config, database connections, etc.
+                                                         (assoc env
+                                                           :db @db-connection ; real datomic would use (d/db db-connection)
+                                                           :connection db-connection
+                                                           :config config)))
+                                    (preprocess-parser-plugin log-requests)
+                                    p/error-handler-plugin
+                                    p/request-cache-plugin
+                                    (p/post-process-parser-plugin p/elide-not-found)
+                                    p/trace-plugin]})
+        ;; NOTE: Add -Dtrace to the server JVM to enable Fulcro Inspect query performance traces to the network tab.
+        ;; Understand that this makes the network responses much larger and should not be used in production.
+        trace?      (not (nil? (System/getProperty "trace")))]
+    (fn wrapped-parser [env tx]
+      (async/<!! (real-parser env (if trace?
+                                    (conj tx :com.wsscode.pathom/trace)
+                                    tx))))))
+
+(defstate parser
+  :start (build-parser db/conn))
+
+
+#+END_SRC
+**** Model
+***** account.clj
+#+BEGIN_SRC clojure :tangle ./src/main/app/model/account.clj
+(ns app.model.account
+  (:require
+    [app.model.mock-database :as db]
+    [datascript.core :as d]
+    [com.fulcrologic.guardrails.core :refer [>defn => | ?]]
+    [com.wsscode.pathom.connect :as pc :refer [defresolver defmutation]]
+    [taoensso.timbre :as log]
+    [clojure.spec.alpha :as s]))
+
+(>defn all-account-ids
+  "Returns a sequence of UUIDs for all of the active accounts in the system"
+  [db]
+  [any? => (s/coll-of uuid? :kind vector?)]
+  (d/q '[:find [?v ...]
+         :where
+         [?e :account/active? true]
+         [?e :account/id ?v]]
+    db))
+
+(defresolver all-users-resolver [{:keys [db]} input]
+  {;;GIVEN nothing (e.g. this is usable as a root query)
+   ;; I can output all accounts. NOTE: only ID is needed...other resolvers resolve the rest
+   ::pc/output [{:all-accounts [:account/id]}]}
+  {:all-accounts (mapv
+                   (fn [id] {:account/id id})
+                   (all-account-ids db))})
+
+(>defn get-account [db id subquery]
+  [any? uuid? vector? => (? map?)]
+  (d/pull db subquery [:account/id id]))
+
+(defresolver account-resolver [{:keys [db] :as env} {:account/keys [id]}]
+  {::pc/input  #{:account/id}
+   ::pc/output [:account/email :account/active?]}
+  (get-account db id [:account/email :account/active?]))
+
+(def resolvers [all-users-resolver account-resolver])
+
+#+END_SRC
+***** account.cljs
+#+BEGIN_SRC clojure :tangle ./src/main/app/model/account.cljs
+(ns app.model.account
+  (:require
+    [taoensso.timbre :as log]
+    [com.fulcrologic.fulcro.mutations :as m :refer [defmutation]]
+    [com.fulcrologic.fulcro.algorithms.merge :as merge]
+    [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]))
+
+(defn user-path
+  "Normalized path to a user entity or field in Fulcro state-map"
+  ([id field] [:account/id id field])
+  ([id] [:account/id id]))
+
+(defn insert-user*
+  "Insert a user into the correct table of the Fulcro state-map database."
+  [state-map {:keys [:account/id] :as user}]
+  (assoc-in state-map (user-path id) user))
+
+(defmutation upsert-user
+  "Client Mutation: Upsert a user (full-stack. see CLJ version for server-side)."
+  [{:keys [:account/id :account/name] :as params}]
+  (action [{:keys [state]}]
+    (log/info "Upsert user action")
+    (swap! state (fn [s]
+                   (-> s
+                     (insert-user* params)
+                     (merge/integrate-ident* [:account/id id] :append [:all-accounts])))))
+  (ok-action [env]
+    (log/info "OK action"))
+  (error-action [env]
+    (log/info "Error action"))
+  (remote [env]
+    (-> env
+      (m/returning 'app.ui.root/User)
+      (m/with-target (targeting/append-to [:all-accounts])))))
+
+#+END_SRC
+***** mock_database.clj
+#+BEGIN_SRC clojure :tangle ./src/main/app/model/mock_database.clj
+(ns app.model.mock-database
+  "This is a mock database implemented via Datascript, which runs completely in memory, has few deps, and requires
+  less setup than Datomic itself.  Its API is very close to Datomics, and for a demo app makes it possible to have the
+  *look* of a real back-end without having quite the amount of setup to understand for a beginner."
+  (:require
+    [datascript.core :as d]
+    [mount.core :refer [defstate]]))
+
+;; In datascript just about the only thing that needs schema
+;; is lookup refs and entity refs.  You can just wing it on
+;; everything else.
+(def schema {:account/id {:db/cardinality :db.cardinality/one
+                          :db/unique      :db.unique/identity}})
+
+(defn new-database [] (d/create-conn schema))
+
+(defstate conn :start (new-database))
+
+#+END_SRC
+***** session.clj
+#+BEGIN_SRC clojure :tangle ./src/main/app/model/session.clj
+(ns app.model.session
+  (:require
+    [app.model.mock-database :as db]
+    [datascript.core :as d]
+    [com.fulcrologic.guardrails.core :refer [>defn => | ?]]
+    [com.wsscode.pathom.connect :as pc :refer [defresolver defmutation]]
+    [taoensso.timbre :as log]
+    [clojure.spec.alpha :as s]
+    [com.fulcrologic.fulcro.server.api-middleware :as fmw]))
+
+(defonce account-database (atom {}))
+
+(defresolver current-session-resolver [env input]
+  {::pc/output [{::current-session [:session/valid? :account/name]}]}
+  (let [{:keys [account/name session/valid?]} (get-in env [:ring/request :session])]
+    (if valid?
+      (do
+        (log/info name "already logged in!")
+        {::current-session {:session/valid? true :account/name name}})
+      {::current-session {:session/valid? false}})))
+
+(defn response-updating-session
+  "Uses \`mutation-response\` as the actual return value for a mutation, but also stores the data into the (cookie-based) session."
+  [mutation-env mutation-response]
+  (let [existing-session (some-> mutation-env :ring/request :session)]
+    (fmw/augment-response
+      mutation-response
+      (fn [resp]
+        (let [new-session (merge existing-session mutation-response)]
+          (assoc resp :session new-session))))))
+
+(defmutation login [env {:keys [username password]}]
+  {::pc/output [:session/valid? :account/name]}
+  (log/info "Authenticating" username)
+  (let [{expected-email    :email
+         expected-password :password} (get @account-database username)]
+    (if (and (= username expected-email) (= password expected-password))
+      (response-updating-session env
+        {:session/valid? true
+         :account/name   username})
+      (do
+        (log/error "Invalid credentials supplied for" username)
+        (throw (ex-info "Invalid credentials" {:username username}))))))
+
+(defmutation logout [env params]
+  {::pc/output [:session/valid?]}
+  (response-updating-session env {:session/valid? false :account/name ""}))
+
+(defmutation signup! [env {:keys [email password]}]
+  {::pc/output [:signup/result]}
+  (swap! account-database assoc email {:email    email
+                                       :password password})
+  {:signup/result "OK"})
+
+(def resolvers [current-session-resolver login logout signup!])
+
+#+END_SRC
+***** session.cljs
+#+BEGIN_SRC clojure :tangle ./src/main/app/model/session.cljs
+(ns app.model.session
+  (:require
+    [app.application :refer [SPA]]
+    [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
+    [com.fulcrologic.fulcro.ui-state-machines :as uism]
+    [taoensso.timbre :as log]
+    [com.fulcrologic.fulcro.components :as comp]
+    [com.fulcrologic.fulcro.mutations :as m :refer [defmutation]]
+    [com.fulcrologic.fulcro.algorithms.form-state :as fs]
+    [clojure.string :as str]))
+
+(defn clear [env]
+  (uism/assoc-aliased env :error ""))
+
+(defn logout [env]
+  (-> env
+    (clear)
+    (uism/assoc-aliased :username "" :session-valid? false :current-user "")
+    (uism/trigger-remote-mutation :actor/login-form 'app.model.session/logout {})
+    (uism/activate :state/logged-out)))
+
+(defn login [{::uism/keys [event-data] :as env}]
+  (-> env
+    (clear)
+    (uism/trigger-remote-mutation :actor/login-form 'app.model.session/login
+      {:username          (:username event-data)
+       :password          (:password event-data)
+       ::m/returning      (uism/actor-class env :actor/current-session)
+       ::uism/ok-event    :event/complete
+       ::uism/error-event :event/failed})
+    (uism/activate :state/checking-session)))
+
+(defn process-session-result [env error-message]
+  (let [success? (uism/alias-value env :session-valid?)]
+    (when success?
+      (dr/change-route SPA ["main"]))
+    (cond-> (clear env)
+      success? (->
+                 (uism/assoc-aliased :modal-open? false)
+                 (uism/activate :state/logged-in))
+      (not success?) (->
+                       (uism/assoc-aliased :error error-message)
+                       (uism/activate :state/logged-out)))))
+
+(def global-events
+  {:event/toggle-modal {::uism/handler (fn [env] (uism/update-aliased env :modal-open? not))}})
+
+(uism/defstatemachine session-machine
+  {::uism/actors
+   #{:actor/login-form :actor/current-session}
+
+   ::uism/aliases
+   {:username       [:actor/login-form :account/email]
+    :error          [:actor/login-form :ui/error]
+    :modal-open?    [:actor/login-form :ui/open?]
+    :session-valid? [:actor/current-session :session/valid?]
+    :current-user   [:actor/current-session :account/name]}
+
+   ::uism/states
+   {:initial
+    {::uism/target-states #{:state/logged-in :state/logged-out}
+     ::uism/events        {::uism/started  {::uism/handler (fn [env]
+                                                             (dr/change-route SPA ["main"])
+                                                             (-> env
+                                                               (uism/assoc-aliased :error "")
+                                                               (uism/load ::current-session :actor/current-session
+                                                                 {::uism/ok-event    :event/complete
+                                                                  ::uism/error-event :event/failed})))}
+                           :event/failed   {::uism/target-state :state/logged-out}
+                           :event/complete {::uism/target-states #{:state/logged-in :state/logged-out}
+                                            ::uism/handler       #(process-session-result % "")}}}
+
+    :state/checking-session
+    {::uism/events (merge global-events
+                     {:event/failed   {::uism/target-states #{:state/logged-out}
+                                       ::uism/handler       (fn [env]
+                                                              (-> env
+                                                                (clear)
+                                                                (uism/assoc-aliased :error "Server error.")))}
+                      :event/complete {::uism/target-states #{:state/logged-out :state/logged-in}
+                                       ::uism/handler       #(process-session-result % "Invalid Credentials.")}})}
+
+    :state/logged-in
+    {::uism/events (merge global-events
+                     {:event/logout {::uism/target-states #{:state/logged-out}
+                                     ::uism/handler       logout}})}
+
+    :state/logged-out
+    {::uism/events (merge global-events
+                     {:event/login {::uism/target-states #{:state/checking-session}
+                                    ::uism/handler       login}})}}})
+
+(def signup-ident [:component/id :signup])
+(defn signup-class [] (comp/registry-key->class :app.ui.root/Signup))
+
+(defn clear-signup-form*
+  "Mutation helper: Updates state map with a cleared signup form that is configured for form state support."
+  [state-map]
+  (-> state-map
+    (assoc-in signup-ident
+      {:account/email          ""
+       :account/password       ""
+       :account/password-again ""})
+    (fs/add-form-config* (signup-class) signup-ident)))
+
+(defmutation clear-signup-form [_]
+  (action [{:keys [state]}]
+    (swap! state clear-signup-form*)))
+
+(defn valid-email? [email] (str/includes? email "@"))
+(defn valid-password? [password] (> (count password) 7))
+
+(defmutation signup! [_]
+  (action [{:keys [state]}]
+    (log/info "Marking complete")
+    (swap! state fs/mark-complete* signup-ident))
+  (ok-action [{:keys [app state]}]
+    (dr/change-route app ["signup-success"]))
+  (remote [{:keys [state] :as env}]
+    (let [{:account/keys [email password password-again]} (get-in @state signup-ident)]
+      (boolean (and (valid-email? email) (valid-password? password)
+                 (= password password-again))))))
+
+
+#+END_SRC
+**** UI
+***** component.cljs
+#+BEGIN_SRC clojure :tangle ./src/main/app/ui/components.cljs
+(ns app.ui.components
+  (:require
+    [com.fulcrologic.fulcro.components :as prim :refer [defsc]]
+    [com.fulcrologic.fulcro.dom :as dom]))
+
+(defsc PlaceholderImage
+  "Generates an SVG image placeholder of the given size and with the given label
+  (defaults to showing 'w x h'.
+
+  \`\`\`
+  (ui-placeholder {:w 50 :h 50 :label \"avatar\"})
+  \`\`\`
+  "
+  [this {:keys [w h label]}]
+  (let [label (or label (str w "x" h))]
+    (dom/svg #js {:width w :height h}
+      (dom/rect #js {:width w :height h :style #js {:fill        "rgb(200,200,200)"
+                                                    :strokeWidth 2
+                                                    :stroke      "black"}})
+      (dom/text #js {:textAnchor "middle" :x (/ w 2) :y (/ h 2)} label))))
+
+(def ui-placeholder (prim/factory PlaceholderImage))
+
+#+END_SRC
+***** root.cljs
+#+BEGIN_SRC clojure :tangle ./src/main/app/ui/root.cljs
+(ns app.ui.root
+  (:require
+    [app.model.session :as session]
+    [clojure.string :as str]
+    [com.fulcrologic.fulcro.dom :as dom :refer [div ul li p h3 button b]]
+    [com.fulcrologic.fulcro.dom.html-entities :as ent]
+    [com.fulcrologic.fulcro.dom.events :as evt]
+    [com.fulcrologic.fulcro.application :as app]
+    [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
+    [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
+    [com.fulcrologic.fulcro.ui-state-machines :as uism :refer [defstatemachine]]
+    [com.fulcrologic.fulcro.mutations :as m :refer [defmutation]]
+    [com.fulcrologic.fulcro.algorithms.merge :as merge]
+    [com.fulcrologic.fulcro-css.css :as css]
+    [com.fulcrologic.fulcro.algorithms.form-state :as fs]
+    [taoensso.timbre :as log]))
+
+(defn field [{:keys [label valid? error-message] :as props}]
+  (let [input-props (-> props (assoc :name label) (dissoc :label :valid? :error-message))]
+    (div :.ui.field
+      (dom/label {:htmlFor label} label)
+      (dom/input input-props)
+      (dom/div :.ui.error.message {:classes [(when valid? "hidden")]}
+        error-message))))
+
+(defsc SignupSuccess [this props]
+  {:query         ['*]
+   :initial-state {}
+   :ident         (fn [] [:component/id :signup-success])
+   :route-segment ["signup-success"]}
+  (div
+    (dom/h3 "Signup Complete!")
+    (dom/p "You can now log in!")))
+
+(defsc Signup [this {:account/keys [email password password-again] :as props}]
+  {:query             [:account/email :account/password :account/password-again fs/form-config-join]
+   :initial-state     (fn [_]
+                        (fs/add-form-config Signup
+                          {:account/email          ""
+                           :account/password       ""
+                           :account/password-again ""}))
+   :form-fields       #{:account/email :account/password :account/password-again}
+   :ident             (fn [] session/signup-ident)
+   :route-segment     ["signup"]
+   :componentDidMount (fn [this]
+                        (comp/transact! this [(session/clear-signup-form)]))}
+  (let [submit!  (fn [evt]
+                   (when (or (identical? true evt) (evt/enter-key? evt))
+                     (comp/transact! this [(session/signup! {:email email :password password})])
+                     (log/info "Sign up")))
+        checked? (fs/checked? props)]
+    (div
+      (dom/h3 "Signup")
+      (div :.ui.form {:classes [(when checked? "error")]}
+        (field {:label         "Email"
+                :value         (or email "")
+                :valid?        (session/valid-email? email)
+                :error-message "Must be an email address"
+                :autoComplete  "off"
+                :onKeyDown     submit!
+                :onChange      #(m/set-string! this :account/email :event %)})
+        (field {:label         "Password"
+                :type          "password"
+                :value         (or password "")
+                :valid?        (session/valid-password? password)
+                :error-message "Password must be at least 8 characters."
+                :onKeyDown     submit!
+                :autoComplete  "off"
+                :onChange      #(m/set-string! this :account/password :event %)})
+        (field {:label         "Repeat Password" :type "password" :value (or password-again "")
+                :autoComplete  "off"
+                :valid?        (= password password-again)
+                :error-message "Passwords do not match."
+                :onChange      #(m/set-string! this :account/password-again :event %)})
+        (dom/button :.ui.primary.button {:onClick #(submit! true)}
+          "Sign Up")))))
+
+(declare Session)
+
+(defsc Login [this {:account/keys [email]
+                    :ui/keys      [error open?] :as props}]
+  {:query         [:ui/open? :ui/error :account/email
+                   {[:component/id :session] (comp/get-query Session)}
+                   [::uism/asm-id ::session/session]]
+   :css           [[:.floating-menu {:position "absolute !important"
+                                     :z-index  1000
+                                     :width    "300px"
+                                     :right    "0px"
+                                     :top      "50px"}]]
+   :initial-state {:account/email "" :ui/error ""}
+   :ident         (fn [] [:component/id :login])}
+  (let [current-state (uism/get-active-state this ::session/session)
+        {current-user :account/name} (get props [:component/id :session])
+        initial?      (= :initial current-state)
+        loading?      (= :state/checking-session current-state)
+        logged-in?    (= :state/logged-in current-state)
+        {:keys [floating-menu]} (css/get-classnames Login)
+        password      (or (comp/get-state this :password) "")] ; c.l. state for security
+    (dom/div
+      (when-not initial?
+        (dom/div :.right.menu
+          (if logged-in?
+            (dom/button :.item
+              {:onClick #(uism/trigger! this ::session/session :event/logout)}
+              (dom/span current-user) ent/nbsp "Log out")
+            (dom/div :.item {:style   {:position "relative"}
+                             :onClick #(uism/trigger! this ::session/session :event/toggle-modal)}
+              "Login"
+              (when open?
+                (dom/div :.four.wide.ui.raised.teal.segment {:onClick (fn [e]
+                                                                        ;; Stop bubbling (would trigger the menu toggle)
+                                                                        (evt/stop-propagation! e))
+                                                             :classes [floating-menu]}
+                  (dom/h3 :.ui.header "Login")
+                  (div :.ui.form {:classes [(when (seq error) "error")]}
+                    (field {:label    "Email"
+                            :value    email
+                            :onChange #(m/set-string! this :account/email :event %)})
+                    (field {:label    "Password"
+                            :type     "password"
+                            :value    password
+                            :onChange #(comp/set-state! this {:password (evt/target-value %)})})
+                    (div :.ui.error.message error)
+                    (div :.ui.field
+                      (dom/button :.ui.button
+                        {:onClick (fn [] (uism/trigger! this ::session/session :event/login {:username email
+                                                                                             :password password}))
+                         :classes [(when loading? "loading")]} "Login"))
+                    (div :.ui.message
+                      (dom/p "Don't have an account?")
+                      (dom/a {:onClick (fn []
+                                         (uism/trigger! this ::session/session :event/toggle-modal {})
+                                         (dr/change-route this ["signup"]))}
+                        "Please sign up!"))))))))))))
+
+(def ui-login (comp/factory Login))
+
+(defsc Main [this props]
+  {:query         [:main/welcome-message]
+   :initial-state {:main/welcome-message "Hi!"}
+   :ident         (fn [] [:component/id :main])
+   :route-segment ["main"]}
+  (div :.ui.container.segment
+    (h3 "Main")))
+
+(defsc Settings [this {:keys [:account/time-zone :account/real-name] :as props}]
+  {:query         [:account/time-zone :account/real-name]
+   :ident         (fn [] [:component/id :settings])
+   :route-segment ["settings"]
+   :initial-state {}}
+  (div :.ui.container.segment
+       (h3 "Settings")
+       (div
+        (p (b "Name: ") real-name)
+        (p (b "Time Zone: ") time-zone))))
+
+(dr/defrouter TopRouter [this props]
+  {:router-targets [Main Signup SignupSuccess Settings]})
+
+(def ui-top-router (comp/factory TopRouter))
+
+(defsc Session
+  "Session representation. Used primarily for server queries. On-screen representation happens in Login component."
+  [this {:keys [:session/valid? :account/name] :as props}]
+  {:query         [:session/valid? :account/name]
+   :ident         (fn [] [:component/id :session])
+   :pre-merge     (fn [{:keys [data-tree]}]
+                    (merge {:session/valid? false :account/name ""}
+                      data-tree))
+   :initial-state {:session/valid? false :account/name ""}})
+
+(def ui-session (comp/factory Session))
+
+(defsc TopChrome [this {:root/keys [router current-session login]}]
+  {:query         [{:root/router (comp/get-query TopRouter)}
+                   {:root/current-session (comp/get-query Session)}
+                   [::uism/asm-id ::TopRouter]
+                   {:root/login (comp/get-query Login)}]
+   :ident         (fn [] [:component/id :top-chrome])
+   :initial-state {:root/router          {}
+                   :root/login           {}
+                   :root/current-session {}}}
+  (let [current-tab (some-> (dr/current-route this this) first keyword)]
+    (div :.ui.container
+      (div :.ui.secondary.pointing.menu
+        (dom/a :.item {:classes [(when (= :main current-tab) "active")]
+                       :onClick (fn [] (dr/change-route this ["main"]))} "Main")
+        (dom/a :.item {:classes [(when (= :settings current-tab) "active")]
+                       :onClick (fn [] (dr/change-route this ["settings"]))} "Settings")
+        (div :.right.menu
+          (ui-login login)))
+      (div :.ui.grid
+        (div :.ui.row
+          (ui-top-router router))))))
+
+(def ui-top-chrome (comp/factory TopChrome))
+
+(defsc Root [this {:root/keys [top-chrome]}]
+  {:query         [{:root/top-chrome (comp/get-query TopChrome)}]
+   :initial-state {:root/top-chrome {}}}
+  (ui-top-chrome top-chrome))
+
+#+END_SRC
+*** Config
+**** defaults.edn
+#+BEGIN_SRC clojure :tangle ./src/main/config/defaults.edn
+{:legal-origins              #{"localhost" "dev.lvh.me"}
+ :org.httpkit.server/config {:port 3000}
+ :taoensso.timbre/logging-config
+                             {:level        :info
+                              :ns-whitelist []
+                              :ns-blacklist ["datomic.kv-cluster"
+                                             "datomic.process-monitor"
+                                             "datomic.reconnector2"
+                                             "datomic.common"
+                                             "datomic.peer"
+                                             "datomic.log"
+                                             "datomic.db"
+                                             "datomic.slf4j"
+                                             "org.projectodd.wunderboss.web.Web"
+                                             "shadow.cljs.devtools.server.worker.impl"]}
+
+ ;; The ssl-redirect defaulted to off, but for security should probably be on in production.
+ :ring.middleware/defaults-config
+                             {:params    {:keywordize true
+                                          :multipart  true
+                                          :nested     true
+                                          :urlencoded true}
+                              :cookies   true
+                              :responses {:absolute-redirects     true
+                                          :content-types          true
+                                          :default-charset        "utf-8"
+                                          :not-modified-responses true}
+                              :static    {:resources "public"}
+                              :session   true
+                              :security  {:anti-forgery   true
+                                          :hsts           true
+                                          :ssl-redirect   false
+                                          :frame-options  :sameorigin
+                                          :xss-protection {:enable? true
+                                                           :mode    :block}}}}
+
+#+END_SRC
+**** dev.edn
+#+BEGIN_SRC clojure :tangle ./src/main/config/dev.edn
+{:taoensso.timbre/logging-config {:level :debug}}
+
+#+END_SRC
+**** prod.edn
+#+BEGIN_SRC clojure :tangle ./src/main/config/prod.edn
+{;; Legal Origins for API request.
+ :legal-origins                  #{"product.domain" "localhost"}
+
+ :org.httpkit.server/config     {:port 8080}
+
+ :taoensso.timbre/logging-config {:level :info}
+ ;; You probably want these set to true in real production:
+ :ring.middleware/defaults-config
+                                 {:proxy    false
+                                  :security {:ssl-redirect false}}}
+
+#+END_SRC

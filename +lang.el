@@ -1,0 +1,22 @@
+;; lsp-ui-sideline is redundant with eldoc and much more invasive
+(setq lsp-ui-sideline-enable nil
+      lsp-enable-symbol-highlighting nil)
+
+(setq ispell-dictionary "en_NZ")
+(setq magit-revision-show-gravatars '("^Author:     " . "^Commit:     "))
+
+(defun cider-eval-n-defuns (n)
+  "Evaluate N top-level forms, starting with the current one."
+  (interactive "P")
+  (cider-eval-region (car (bounds-of-thing-at-point 'defun))
+                     (save-excursion
+                       (dotimes (i (or n 2))
+                         (end-of-defun))
+                       (point))))
+
+(use-package! clojure-mode
+  :config
+  (require 'flycheck-clj-kondo))
+
+(use-package! cider
+  :bind ("C-c C-a" . cider-eval-n-defuns))
