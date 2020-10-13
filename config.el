@@ -3,28 +3,52 @@
 
 ;; Place your private configuration here! Remember, you do not need to run 'doom
 ;; sync' after modifying this file!
-(setq-default user-full-name "Andrés Gasson"
-  user-mail-address "agasson@red-elvis.net"
-  github-account-name "frap")
+(if IS-MAC
+  (setq
+    user-full-name "Andrés Gasson"
+    user-mail-address "agasson@red-elvis.net"
+    github-account-name "frap")
+  (setq
+    user-full-name "atearoot"
+    user-mail-address "support@ateasystems.com"))
+
+
+(setq-default
+ delete-by-moving-to-trash t                      ; Delete files to trash
+ window-combination-resize t                      ; take new window space from all other windows (not just current)
+ x-stretch-cursor t)                              ; Stretch cursor to the glyph width
+
+(setq undo-limit 80000000                         ; Raise undo-limit to 80Mb
+      auto-save-default t                         ; Nobody likes to loose work, I certainly don't
+      truncate-string-ellipsis "…")               ; Unicode ellispis are nicer than "...", and also save /precious/ space
+
+(display-time-mode 1)                             ; Enable time in the mode-line
+;(setq display-time-day-and-date t)                ;
+(unless (equal "Battery status not available"
+               (battery))
+  (display-battery-mode 1))                       ; On laptops it's nice to know how much power you have
+(global-subword-mode 1)                           ; Iterate through CamelCase words
 
 (setq default-directory "~")
 
 ;; Global settings
-(setq! show-paren-mode 1
-       doom-scratch-initial-major-mode t)
-(setq! auth-sources '("~/.authinfo.gpg"))
-(display-time-mode 1)
-(setq display-time-day-and-date t)
+;(setq! show-paren-mode 1
+;       doom-scratch-initial-major-mode t)
 
-(when (equal (window-system) nil)
-  (and
-   (bind-key "C-<down>" #'+org/insert-item-below)
-   (setq doom-theme 'doom-monokai-pro)
-    (setq doom-font (font-spec :family "Input Mono" :size 20))))
+;; default is in .emacs.d and can be deleted -- used for gpg
+(setq!
+  auth-sources '("~/.authinfo.gpg")
+  auth-source-cache-expiry nil) ; default is 7200 (2h)
 
+
+(setq display-line-numbers-type 'relative)
+
+;; I’d like some slightly nicer default buffer names
+;;(setq doom-fallback-buffer-name "► Doom"
+;;      +doom-dashboard-name "► Doom")
 
 ;; Load Personalised bindings
-(load! "+bindings")
+;;(load! "+bindings")
 ;(load! "+functions")
 ;; Theme related things
 (load! "+themes")
@@ -32,14 +56,19 @@
 (load! "+org")
 (load! "+lang")
 ;; Configuration of DOOM ui
-(load! "+ui")
+;;(load! "+ui")
+;; Editor add aka ANSI codes
+(load! "+editor")
 ;; disable org-mode's auto wrap
 ;(remove-hook 'org-mode-hook 'auto-fill-mode)
-
 ;; mu4e setup
 ;;
 ;(if IS-MAC
 ;  (load! "+mail"))
+
+;; Which key - make it pop up faster
+(setq which-key-idle-delay 0.5) ;; I need the help, I really do
+
 
 ;(add-to-list 'org-structure-template-alist '("r" . "src rust"))
 ;; ** tools
@@ -49,19 +78,19 @@
 ;; S-down to move between windows. This is much more convenient and
 ;; efficient than using the default binding, C-x o, to cycle through
 ;; all of them in an essentially unpredictable order.
-(use-package! windmove
-  :demand t
-  :config
+;; (use-package! windmove
+;;   :demand t
+;;   :config
 
-  (windmove-default-keybindings)
+;;   (windmove-default-keybindings)
 
-  ;; Introduced in Emacs 27:
+;;   ;; Introduced in Emacs 27:
 
-  (when (fboundp 'windmove-display-default-keybindings)
-    (windmove-display-default-keybindings))
+;;   (when (fboundp 'windmove-display-default-keybindings)
+;;     (windmove-display-default-keybindings))
 
-  (when (fboundp 'windmove-delete-default-keybindings)
-    (windmove-delete-default-keybindings)))
+;;   (when (fboundp 'windmove-delete-default-keybindings)
+;;     (windmove-delete-default-keybindings)))
 
 ;; Feature `winner' provides an undo/redo stack for window
 ;; configurations, with undo and redo being C-c left and C-c right,
@@ -69,24 +98,24 @@
 ;; rather a whole sequence of them.) For instance, you can use C-x 1
 ;; to focus on a particular window, then return to your previous
 ;; layout with C-c left.
-(use-package! winner
-  :demand t
-  :config
-   (map! :map winner-mode-map
-        "<M-right>" #'winner-redo
-        "<M-left>" #'winner-undo)
-  (winner-mode +1))
+;(use-package! winner
+;  :demand t
+;  :config
+;   (map! :map winner-mode-map
+;        "<M-right>" #'winner-redo
+;        "<M-left>" #'winner-undo)
+;  (winner-mode +1))
 
-(setq search-highlight t
-      search-whitespace-regexp ".*?"
-      isearch-lax-whitespace t
-      isearch-regexp-lax-whitespace nil
-      isearch-lazy-highlight t
-      isearch-lazy-count t
-      lazy-count-prefix-format " (%s/%s) "
-      lazy-count-suffix-format nil
-      isearch-yank-on-move 'shift
-  isearch-allow-scroll 'unlimited)
+;; (setq search-highlight t
+;;       search-whitespace-regexp ".*?"
+;;       isearch-lax-whitespace t
+;;       isearch-regexp-lax-whitespace nil
+;;       isearch-lazy-highlight t
+;;       isearch-lazy-count t
+;;       lazy-count-prefix-format " (%s/%s) "
+;;       lazy-count-suffix-format nil
+;;       isearch-yank-on-move 'shift
+;;   isearch-allow-scroll 'unlimited)
 
 
 (after! dired
@@ -119,23 +148,15 @@
         "C-M-p" #'sp-backward-down-sexp
         "C-M-n" #'sp-up-sexp
         "C-M-s" #'sp-splice-sexp
+        "C-M-k"     #'sp-kill-sexp
+        "C-M-t"     #'sp-transpose-sexp
+        "C-<right>" #'sp-forward-slurp-sexp
+        "M-<right>" #'sp-forward-barf-sexp
+        "C-<left>"  #'sp-backward-slurp-sexp
+        "M-<left>"  #'sp-backward-barf-sexp
         "C-)" #'sp-forward-slurp-sexp
         "C-}" #'sp-forward-barf-sexp
         "C-(" #'sp-backward-slurp-sexp
         "C-M-)" #'sp-backward-slurp-sexp
         "C-M-)" #'sp-backward-barf-sexp))
 
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
-  '(custom-safe-themes
-     '("425cf02839fa7c5ebd6cb11f8074f6b8463ae6ed3eeb4cf5a2b18ffc33383b0b" "b5fff23b86b3fd2dd2cc86aa3b27ee91513adaefeaa75adc8af35a45ffb6c499" "7a994c16aa550678846e82edc8c9d6a7d39cc6564baaaacc305a3fdc0bd8725f" "99ea831ca79a916f1bd789de366b639d09811501e8c092c85b2cb7d697777f93" "7b3d184d2955990e4df1162aeff6bfb4e1c3e822368f0359e15e2974235d9fa8" "76bfa9318742342233d8b0b42e824130b3a50dcc732866ff8e47366aed69de11" "be9645aaa8c11f76a10bcf36aaf83f54f4587ced1b9b679b55639c87404e2499" "9b272154fb77a926f52f2756ed5872877ad8d73d018a426d44c6083d1ed972b1" "e074be1c799b509f52870ee596a5977b519f6d269455b84ed998666cf6fc802a" default))
- '(org-fc-directories '("~/org/spaced-repetition/") t))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(org-roam-link ((t (:inherit org-link :foreground "#005200")))))

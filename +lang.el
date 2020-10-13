@@ -15,8 +15,15 @@
                        (point))))
 
 (use-package! clojure-mode
+  :mode ("\\.edn\\'" . clojure-mode)
+  :bind ("C-c C-a" . cider-eval-n-defuns)
   :config
   (require 'flycheck-clj-kondo))
 
-(use-package! cider
-  :bind ("C-c C-a" . cider-eval-n-defuns))
+
+(after! tramp
+  (setenv "SHELL" "/bin/bash")
+  (setq tramp-shell-prompt-pattern "\\(?:^\\|\\)[^]#$%>\n]*#?[]#$%>] *\\(�\\[[0-9;]*[a-zA-Z] *\\)*")) ;; default + 
+
+;; Nested snippets are good, enable that.
+(setq yas-triggers-in-field t)
