@@ -142,24 +142,89 @@
 )
 
 (use-package! smartparens
-  :init
-  (map! :map smartparens-mode-map
-        "C-M-f" #'sp-forward-sexp
-        "C-M-b" #'sp-backward-sexp
-        "C-M-u" #'sp-backward-up-sexp
-        "C-M-d" #'sp-down-sexp
-        "C-M-p" #'sp-backward-down-sexp
-        "C-M-n" #'sp-up-sexp
-        "C-M-s" #'sp-splice-sexp
-        "C-M-k"     #'sp-kill-sexp
-        "C-M-t"     #'sp-transpose-sexp
-        "C-<right>" #'sp-forward-slurp-sexp
-        "M-<right>" #'sp-forward-barf-sexp
-        "C-<left>"  #'sp-backward-slurp-sexp
-        "M-<left>"  #'sp-backward-barf-sexp
-        "C-)" #'sp-forward-slurp-sexp
-        "C-}" #'sp-forward-barf-sexp
-        "C-(" #'sp-backward-slurp-sexp
-        "C-M-)" #'sp-backward-slurp-sexp
-        "C-M-)" #'sp-backward-barf-sexp))
+  ;; :init
+  ;; (map! :map smartparens-mode-map
+  ;;       "C-M-f" #'sp-forward-sexp
+  ;;       "C-M-b" #'sp-backward-sexp
+  ;;       "C-M-u" #'sp-backward-up-sexp
+  ;;       "C-M-d" #'sp-down-sexp
+  ;;       "C-M-p" #'sp-backward-down-sexp
+  ;;       "C-M-n" #'sp-up-sexp
+  ;;       "C-M-s" #'sp-splice-sexp
+  ;;       "C-M-k"     #'sp-kill-sexp
+  ;;       "C-M-t"     #'sp-transpose-sexp
+  ;;       "C-<right>" #'sp-forward-slurp-sexp
+  ;;       "M-<right>" #'sp-forward-barf-sexp
+  ;;       "C-<left>"  #'sp-backward-slurp-sexp
+  ;;       "M-<left>"  #'sp-backward-barf-sexp
+  ;;       "C-)" #'sp-forward-slurp-sexp
+  ;;       "C-}" #'sp-forward-barf-sexp
+  ;;       "C-(" #'sp-backward-slurp-sexp
+  ;;       "C-M-)" #'sp-backward-slurp-sexp
+  ;;       "C-M-)" #'sp-backward-barf-sexp)
+  :config
+  ;; Load the default pair definitions for Smartparens.
+  (require 'smartparens-config)
 
+  ;; Enable Smartparens functionality in all buffers.
+  (smartparens-global-mode +1)
+
+  ;; When in Paredit emulation mode, Smartparens binds M-( to wrap the
+  ;; following s-expression in round parentheses. By analogy, we
+  ;; should bind M-[ to wrap the following s-expression in square
+  ;; brackets. However, this breaks escape sequences in the terminal,
+  ;; so it may be controversial upstream. We only enable the
+  ;; keybinding in windowed mode.
+  (when (display-graphic-p)
+    (setf (map-elt sp-paredit-bindings "M-[") #'sp-wrap-square))
+
+  ;; Set up keybindings for s-expression navigation and manipulation
+  ;; in the style of Paredit.
+  (sp-use-paredit-bindings)
+
+  ;; Highlight matching delimiters.
+  (show-smartparens-global-mode +1)
+
+  ;; Prevent all transient highlighting of inserted pairs.
+  (setq sp-highlight-pair-overlay nil)
+  (setq sp-highlight-wrap-overlay nil)
+  (setq sp-highlight-wrap-tag-overlay nil)
+
+  ;; Don't disable autoskip when point moves backwards. (This lets you
+  ;; open a sexp, type some things, delete some things, etc., and then
+  ;; type over the closing delimiter as long as you didn't leave the
+  ;; sexp entirely.)
+  (setq sp-cancel-autoskip-on-backward-movement nil)
+  ;; Make C-k kill the sexp following point in Lisp modes, instead of
+  ;; just the current line.
+  (bind-key [remap kill-line] #'sp-kill-hybrid-sexp smartparens-mode-map
+            (apply #'derived-mode-p sp-lisp-modes))
+
+  (defun radian--smartparens-indent-new-pair (&rest _)
+    "Insert an extra newline after point, and reindent."
+    (newline)
+    (indent-according-to-mode)
+    (forward-line -1)
+    (indent-according-to-mode))
+
+  ;; The following is a really absurdly stupid hack that I can barely
+  ;; stand to look at. It needs to be fixed.
+  ;;
+  ;; Nevertheless, I can't live without the feature it provides (which
+  ;; should really come out of the box IMO): when pressing RET after
+  ;; inserting a pair, add an extra newline and indent. See
+  ;; <https://github.com/Fuco1/smartparens/issues/80#issuecomment-18910312>.
+
+  (defun radian--smartparens-pair-setup (mode delim)
+    "In major mode MODE, set up DELIM with newline-and-indent."
+    (sp-local-pair mode delim nil :post-handlers
+                   '((radian--smartparens-indent-new-pair "RET")
+                     (radian--smartparens-indent-new-pair "<return>"))))
+
+  ;; Work around https://github.com/Fuco1/smartparens/issues/783.
+  (setq sp-escape-quotes-after-insert nil)
+
+  ;; Quiet some silly messages.
+  (dolist (key '(:unmatched-expression :no-matching-tag))
+    (setf (cdr (assq key sp-message-alist)) nil))
+  )

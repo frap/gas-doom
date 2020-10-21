@@ -73,10 +73,10 @@ mkdir dev src/$1/server
 ** dir-locals
 #+BEGIN_SRC emacs-lisp :tangle ./.dir-locals.el
 ((nil . (
-;;         (cider-clojure-cli-parameters . "-M:dev")
          (cider-ns-refresh-before-fn . "dev/suspend")
          (cider-ns-refresh-after-fn  . "dev/resume ")
-;;         (cider-repl-init-code . ("(dev)"))
+         (cider-clojure-cli-parameters . "-A:dev")
+         (cider-repl-init-code . ("(dev)"))
          )))
 #+END_SRC
 
@@ -260,8 +260,6 @@ Tests are important even in experimental code, blah blah...
   []
   (reset)
   (time (test-all)))
-
-
 #+END_SRC
 
 ** System
@@ -321,7 +319,7 @@ meta information
             (useful-info k (get config k) (get state k)))))
 #+END_SRC
 And the test system
-#+BEGIN_SRC clojure :mkdirp yes :padline no
+#+BEGIN_SRC clojure :tangle ./test/$1/test/system.clj :mkdirp yes :padline no
   (ns $1.test.system
   (:require
    [integrant.core :as ig]
