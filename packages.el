@@ -8,9 +8,8 @@
 (package! deadgrep)
 ;;(package! org-gcal)
 (package! org-fc :recipe (:host github :repo "l3kn/org-fc"))
-(package! org-clock-convenience)
-(package! company-posframe
-  :recipe (:host github :repo "jethrokuan/company-org-roam"))
+(package! org-clock-convenience :ignore t)
+(package! company-posframe)
 
 (package! doom-snippets :ignore t)
 ;; If you want to replace it with yasnippet's default snippets

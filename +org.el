@@ -3,7 +3,7 @@
 ;; If you use `org' and don't want your org files in the default location below,
 ;; change `org-directory'. It must be set before org loads!
 (setq
-  org-directory "~/org/gtd"
+  org-directory "~/Sync/Dropbox/org/gtd"
   org-use-property-inheritance t              ; it's convenient to have properties inherited
   org-log-done 'time                          ; having the time a item is done sounds convininet
   org-list-allow-alphabetical t               ; have a. A. a) A) list bullets
@@ -13,7 +13,7 @@
   org-ellipsis " ▼ "
 
  ;; org-archive-location (concat org-directory ".archive/%s::")
-  org-roam-directory "~/org/roam"
+  org-roam-directory "~/Sync/Dropbox/org/roam"
  )
 
 
@@ -59,8 +59,11 @@
        ("el" . "src emacs-lisp")
        ("cl" . "src clojure")
        ("d" . "definition")
-       ("t" . "theorem"))))
+       ("t" . "theorem")
+       ("j" . "src javascript")
+       ("r" . "src rust"))))
 
+;(add-to-list 'org-structure-template-alist '("r" . "src rust"))
 ;; My Spelling is atrocious
 (after! org (add-hook 'org-mode-hook 'turn-on-flyspell))
 
@@ -753,7 +756,9 @@ is selected, only the bare key is returned."
           doom-private-dir
           user-emacs-directory)
         "obtt")
-      obtt-seed-name ".obtt"))
+      obtt-seed-name ".obtt")
+    :config
+    (setq! obtt-project-directory (concat (getenv "HOME") "/Dev/clj" )))
 
   (when (not (file-directory-p obtt-templates-dir))
     (make-directory obtt-templates-dir))
@@ -789,35 +794,37 @@ is selected, only the bare key is returned."
               :priority_d   ,(propertize "⬇" 'face 'all-the-icons-green)
               :priority_e   ,(propertize "❓" 'face 'all-the-icons-blue)
               :em_dash       "—"))
-  (set-ligatures! 'org-mode
-    :merge t
-    :checkbox      "[ ]"
-    :pending       "[-]"
-    :checkedbox    "[X]"
-    :list_property "::"
-    :results       "#+results:"
-    :property      "#+property:"
-    :property      ":PROPERTIES:"
-    :end           ":END:"
-    :options       "#+options:"
-    :title         "#+title:"
-    :subtitle      "#+subtitle:"
-    :author        "#+author:"
-    :date          "#+date:"
-    :latex_class   "#+latex_class:"
-    :latex_header  "#+latex_header:"
-    :beamer_header "#+beamer_header:"
-    :begin_quote   "#+begin_quote"
-    :end_quote     "#+end_quote"
-    :begin_export  "#+begin_export"
-    :end_export    "#+end_export"
-    :priority_a    "[#A]"
-    :priority_b    "[#B]"
-    :priority_c    "[#C]"
-    :priority_d    "[#D]"
-    :priority_e    "[#E]"
-    :em_dash       "---"))
-(plist-put +ligatures-extra-symbols :name "⁍") ; or › could be good?
+
+        (set-ligatures! 'org-mode
+          :merge t
+          :checkbox      "[ ]"
+          :pending       "[-]"
+          :checkedbox    "[X]"
+          :list_property "::"
+          :results       "#+results:"
+          :property      "#+property:"
+          :property      ":PROPERTIES:"
+          :end           ":END:"
+          :options       "#+options:"
+          :title         "#+title:"
+          :subtitle      "#+subtitle:"
+          :author        "#+author:"
+          :date          "#+date:"
+          :latex_class   "#+latex_class:"
+          :latex_header  "#+latex_header:"
+          :beamer_header "#+beamer_header:"
+          :begin_quote   "#+begin_quote"
+          :end_quote     "#+end_quote"
+          :begin_export  "#+begin_export"
+          :end_export    "#+end_export"
+          :priority_a    "[#A]"
+          :priority_b    "[#B]"
+          :priority_c    "[#C]"
+          :priority_d    "[#D]"
+          :priority_e    "[#E]"
+          :em_dash       "---")
+        (plist-put +ligatures-extra-symbols :name "⁍")      ; or › could be good?
+)
 
 (provide '+org)
 ;;; +org ends here

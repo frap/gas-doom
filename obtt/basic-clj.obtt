@@ -1,0 +1,596 @@
+# -*- mode: org -*-
+#+TITLE: basic-clj
+# coding: utf-8
+
+Gases basic project setup for clojure app.
+
+* Variables
+
+- Name :: $1
+- Description :: $2
+
+* README
+#+BEGIN_SRC org :tangle ./README.org
+,#+TITLE: $1
+
+basic clojure template using integrant adn aleph
+
+$2
+#+END_SRC
+
+* General structure
+
+Basic Clojure structure with src, test, resources and a dev repl
+setup.
+
+#+BEGIN_SRC shell :obtt eval
+mkdir -p src/$1 test/$1 resource/public
+mkdir dev src/$1/server
+#+END_SRC
+
+* Project files
+** deps.edn
+#+BEGIN_SRC clojure :tangle ./deps.edn
+{:paths   ["src/" "resources"]
+
+ :deps    {org.clojure/clojure                 {:mvn/version "1.10.1"}
+           manifold/manifold                   {:mvn/version "0.1.9-alpha3"}
+           byte-streams/byte-streams           {:mvn/version "0.2.4"}
+           gloss/gloss                         {:mvn/version "0.2.6"}
+           aleph/aleph                         {:mvn/version "0.4.7-alpha7"}
+
+           ;; http-kit/http-kit                   {:mvn/version "2.5.0"}
+           integrant/integrant                 {:mvn/version "0.8.0"}
+           aero/aero                           {:mvn/version "1.1.6"}
+
+           org.clojure/core.async              {:mvn/version "1.3.610"}
+           org.clojure/core.match              {:mvn/version "1.0.0"}
+           instaparse/instaparse               {:mvn/version "1.4.10"}
+
+           compojure/compojure                 {:mvn/version "1.6.2"}
+           ring/ring-core                      {:mvn/version "1.8.2"}
+           ring/ring-defaults                  {:mvn/version "0.3.2"}
+           ;;logging
+           io.pedestal/pedestal.log            {:mvn/version "0.5.8"}
+           }
+
+ :aliases
+           {:dev       {:extra-paths ["test" "dev"]
+                    ;;   :jvm-opts    ["-XX:-OmitStackTraceInFastThrow"]
+                       :extra-deps  {org.clojure/clojurescript   {:mvn/version "1.10.773"}
+                                     io.aviso/pretty             {:mvn/version "0.1.37"}
+                                     binaryage/devtools          {:mvn/version "0.9.10"}
+                                     spyscope/spyscope           {:mvn/version "0.1.6"
+                                                                  :exclusions [fipp/fipp]}
+                                     fipp/fipp                   {:mvn/version "0.6.23"}
+                                     integrant/repl              {:mvn/version "0.3.2"}
+                                     org.clojure/tools.namespace {:mvn/version "1.0.0"}}
+                       }
+            }
+ }
+#+END_SRC
+
+** dir-locals
+#+BEGIN_SRC emacs-lisp :tangle ./.dir-locals.el
+((nil . (
+;;         (cider-clojure-cli-parameters . "-M:dev")
+         (cider-ns-refresh-before-fn . "dev/suspend")
+         (cider-ns-refresh-after-fn  . "dev/resume ")
+;;         (cider-repl-init-code . ("(dev)"))
+         )))
+#+END_SRC
+
+* Testing
+
+Tests are important even in experimental code, blah blah...
+** Test
+*** sample_test.cljc
+#+BEGIN_SRC clojure :tangle ./test/$1/sample_test.cljc
+(ns $1.sample-test
+  (:require
+    [clojure.test :refer [deftest]]
+    [fulcro-spec.core :refer [specification provided behavior assertions]]))
+
+; Tests for both client and server
+(deftest sample-test
+  (behavior "addition computes addition correctly"
+    (assertions
+      "with positive integers"
+      (+ 1 5 3) => 9
+      "with negative integers"
+      (+ -1 -3 -5) => -9
+      "with a mix of signed integers"
+      (+ +5 -3) => 2)))
+
+#+END_SRC
+* Sources
+** Dev
+
+*** user.clj
+#+BEGIN_SRC clojure :tangle ./dev/user.clj :mkdirp yes :padline no
+;; shamelessly copied from Juxt Edge
+(ns user
+  (:require
+   [clojure.tools.namespace.repl :refer :all]
+   [clojure.java.classpath :refer [classpath-directories]]
+   [io.aviso.ansi :as ansi]
+   [integrant.repl.state]
+   [spyscope.core]))
+
+(let [lock (Object.)]
+  (defn dev
+    "Call this to switch to the dev namespace."
+    []
+    (println "[Elvis] Loading Clojure code, please wait...")
+    (locking lock
+      (require 'dev))
+    (when-not integrant.repl.state/system
+      (println (ansi/bold-yellow "[Elvis] Enter (go) to start the dev system")))
+    (in-ns 'dev)))
+
+(defn fixed!
+  "If, for some reason, the Clojure code in the project fails to
+  compile - we still bring up a REPL to help debug the problem. Once
+  the problem has been resolved you can call this function to continue
+  development."
+  []
+  (refresh-all)
+  (in-ns 'dev))
+#+END_SRC
+
+*** dev.clj
+#+BEGIN_SRC clojure :tangle ./dev/dev.clj :mkdirp yes :padline no
+;; Copyright © 2020 Red Elvis
+;; shamelessly copied from Juxt Edge
+(ns ^{:clojure.tools.namespace.repl/load false} dev
+   (:require
+   [clojure.test :refer [run-tests]]
+   [$1.system :as system]
+   [$1.system.meta :as system.meta]
+   [integrant.repl]
+   [integrant.repl.state]
+   [aleph.http :as http]
+   [manifold.stream :as s]
+   [manifold.deferred :as d]
+   [io.aviso.ansi :as ansi]))
+
+(when (try
+        (Class/forName "org.slf4j.bridge.SLF4JBridgeHandler")
+        (catch ClassNotFoundException _
+          false))
+  (eval
+    `(do
+       (org.slf4j.bridge.SLF4JBridgeHandler/removeHandlersForRootLogger)
+       (org.slf4j.bridge.SLF4JBridgeHandler/install))))
+
+(when (try
+        (require 'figwheel.main.logging)
+        true
+        (catch Throwable _))
+  ;; Undo default logger being extremely fine grained in figwheel,
+  ;; in order to configure figwheel to delegate to slf4j.
+  (let [l @(resolve 'figwheel.main.logging/*logger*)]
+    ((resolve 'figwheel.main.logging/remove-handlers) l)
+    (.setUseParentHandlers l true)))
+
+(defmacro ^:private proxy-ns
+  [ns & vars]
+  (cons `do
+        (map (fn [v] `(do (def ~v ~(symbol (str ns) (str v)))
+                          (alter-meta!
+                            (resolve '~v)
+                            merge
+                            {:original-line (:line (meta (resolve '~v)))}
+                            (select-keys (meta (resolve '~(symbol (str ns) (str v))))
+                                         [:doc :file :line :column :arglists])
+                            (meta ~v))))
+             vars)))
+
+(proxy-ns integrant.repl
+  ^{:doc "Stop the system and clear the system variable."} clear
+  ^{:doc "Stop the system, if running"} halt
+  prep
+  init
+  ^{:doc "Suspend the system, reload changed code, and start the system again"} reset
+  ^{:doc "Suspend the system, reload all code, and start the system again"} reset-all
+  ^{:doc "Like halt, but doesn't completely stop some components.  This makes the components faster to start again, but means they may not be completely stopped (e.g. A web server might still have the port in use)"} suspend)
+
+(defn add-lib
+  [& args]
+  (apply (requiring-resolve 'clojure.tools.deps.alpha.repl/add-lib) args))
+
+(defmacro ^:private watch-var
+  [s alias]
+  `(do
+     (def ~alias ~s)
+     (add-watch (var ~s)
+                (keyword "dev" ~(name alias))
+                (fn [_# _# _# new#]
+                  (alter-var-root
+                    (var ~alias)
+                    (constantly new#))))))
+
+(watch-var integrant.repl.state/system ^{:doc "After starting your dev system, this will be the system that was started.  You can use this to get individual components and test them in the repl."} system)
+(watch-var integrant.repl.state/config ^{:doc "The :ig/system key used to create `system`"} system-config)
+
+(defn go
+  "Start the dev system, and output any useful information about the system
+  which was just started.  For example, it will output where to open your
+  browser to see the application and link to your figwheel auto-test page."
+  []
+  (let [res (integrant.repl/go)]
+    (doseq [message (system.meta/useful-infos system-config system)]
+      (println (ansi/yellow (format "[Elvis] %s" message))))
+    (println (str (io.aviso.ansi/yellow "[Elvis] Now make code changes, then enter ")
+                  (ansi/bold-yellow "(reset)")
+                  (ansi/yellow " here")))
+    res))
+
+(defn resume
+  "Like `go`, but works on a system suspended with `suspend`."
+  []
+  (let [res (integrant.repl/resume)]
+    (doseq [message (system.meta/useful-infos system-config system)]
+      (println (ansi/yellow (format "[Elvis] %s" message))))
+    res))
+
+(integrant.repl/set-prep! #(system/system-config {:profile :dev}))
+
+(defn set-prep!
+  "Set the opts passed to `aero.core/read-config` for the development system.
+
+  Example: `(set-prep! {:profile :dev :features [:in-memory-postgres]})`"
+  [aero-opts]
+  (integrant.repl/set-prep! #(system/system-config aero-opts)))
+
+(defn- test-namespaces
+  []
+  (keep (fn [[ns vars]]
+          (when (some (comp :test meta) vars) ns))
+        (map (juxt identity (comp vals ns-publics))
+             (all-ns))))
+
+(defn test-all
+  "Run all tests"
+  []
+  (apply run-tests (test-namespaces)))
+
+(defn reset-and-test
+  "Reset the system, and run all tests."
+  []
+  (reset)
+  (time (test-all)))
+
+
+#+END_SRC
+
+** System
+#+BEGIN_SRC clojure :tangle ./src/$1/system.clj :mkdirp yes :padline no
+  (ns $1.system
+  "Components and their dependency relationships"
+  (:require
+   [aero.core :as aero]
+   [clojure.java.io :as io]
+   [integrant.core :as ig]))
+
+;; There will be integrant tags in our Aero configuration. We need to
+;; let Aero know about them using this defmethod.
+(defmethod aero/reader 'ig/ref [_ _ value]
+  (ig/ref value))
+
+(let [lock (Object.)]
+  (defn- load-namespaces
+    [system-config]
+    (locking lock
+      (ig/load-namespaces system-config))))
+
+(defn config
+  "Read EDN config, with the given aero options. See Aero docs at
+  https://github.com/juxt/aero for details."
+  [opts]
+  (-> (io/resource "config.edn") ;; <1>
+      (aero/read-config opts)) ;; <2>
+  )
+
+(defn system-config
+  "Construct a new system, configured with the given profile"
+  [opts]
+  (let [config (config opts) ;; <1>
+        system-config (:ig/system config)] ;; <2>
+    (load-namespaces system-config) ;; <3>
+    (ig/prep system-config) ;; <4>
+    ))
+#+END_SRC
+
+meta information
+#+BEGIN_SRC clojure :tangle ./src/$1/system/meta.clj
+
+(ns $1.system.meta)
+
+(defmulti useful-info (fn [k config state]
+                        (if (vector? k)
+                          (first k)
+                          k)))
+
+(defmethod useful-info :default [_ _ _] nil)
+
+(defn useful-infos
+  [config state]
+  (filter some?
+          (for [k (keys state)]
+            (useful-info k (get config k) (get state k)))))
+#+END_SRC
+And the test system
+#+BEGIN_SRC clojure :mkdirp yes :padline no
+  (ns $1.test.system
+  (:require
+   [integrant.core :as ig]
+   [$1.system]))
+
+(def ^:dynamic *system* nil)
+
+(defmacro ^:private with-system
+  [system ks & body]
+  `(let [system# ~system
+         s# (ig/init system# (or ~ks (keys system#)))]
+     (try
+       (binding [*system* s#]
+         ~@body)
+       (finally
+         (ig/halt! s#)))))
+
+(defn- default-system
+  []
+  ($1.system/system-config
+    {:profile :test}))
+
+(defn with-system-fixture
+  ([]
+   (with-system-fixture default-system))
+  ([system]
+   (fn [f]
+     (with-system (system) nil
+       (f)))))
+
+(defn with-subsystem-fixture
+  ([ks]
+   (with-subsystem-fixture default-system ks))
+  ([system ks]
+   (fn [f]
+     (with-system (system) ks
+       (f)))))
+;; end of $1.test.system
+#+END_SRC
+
+** Main
+*** App
+**** App
+**** Server Components
+
+***** http_server.clj
+Aleph http server
+#+BEGIN_SRC clojure :tangle ./src/$1/server/http_server.clj
+(ns $1.server.http-server
+  (:require
+    [aleph.http :as http]
+    [byte-streams :as bs]
+    [manifold.stream :as s]
+    [ring.middleware.params :as params]
+    [compojure.route :as route]
+    [compojure.response :refer [Renderable]]
+    [integrant.core :as ig]
+    [io.pedestal.log :as log]))
+
+(defn hello-world-handler
+  "A basic Ring handler which immediately returns 'hello world'"
+  [req]
+  {:status 200
+   :headers {"content-type" "text/plain"}
+   :body "hola mundo!"})
+
+;; Compojure will normally dereference deferreds and return the realized value.
+;; Unfortunately, this blocks the thread. Since Aleph can accept the unrealized
+;; deferred, we extend Compojure's `Renderable` protocol to pass the deferred
+;; through unchanged so it can be handled asynchronously.
+(extend-protocol Renderable
+  clojure.lang.IDeref
+  (render [d _] (d/->deferred d)))
+
+(defn delayed-hello-world-handler
+  "A non-standard response handler that returns a deferred which yields a Ring response
+   after one second.  In a typical Ring-compliant server, this would require holding onto a
+   thread via `Thread.sleep()` or a similar mechanism, but the use of a deferred allows for
+   the thread to be immediately released without an immediate response.
+   This is an atypical usage of `manifold.deferred/timeout!`, which puts a 'timeout value'
+   into a deferred after an interval if it hasn't already been realized.  Here there's nothing
+   else trying to touch the deferred, so it will simply yield the 'hello world' response after
+   1000 milliseconds."
+  [req]
+  (d/timeout!
+    (d/deferred)
+    1000
+    (hello-world-handler req)))
+
+(defn streaming-numbers-handler
+  "Returns a streamed HTTP response, consisting of newline-delimited numbers every 100
+   milliseconds.  While this would typically be represented by a lazy sequence, instead we use
+   a Manifold stream.  Similar to the use of the deferred above, this means we don't need
+   to allocate a thread per-request.
+   In this handler we're assuming the string value for `count` is a valid number.  If not,
+   `Integer.parseInt()` will throw an exception, and we'll return a `500` status response
+   with the stack trace.  If we wanted to be more precise in our status, we'd wrap the parsing
+   code with a try/catch that returns a `400` status when the `count` is malformed.
+   `manifold.stream/periodically` is similar to Clojure's `repeatedly`, except that it emits
+   the value returned by the function at a fixed interval."
+  [{:keys [params]}]
+  (let [cnt (Integer/parseInt (get params "count" "0"))]
+    {:status 200
+     :headers {"content-type" "text/plain"}
+     :body (let [sent (atom 0)]
+             (->> (s/periodically 100 #(str (swap! sent inc) "\n"))
+               (s/transform (take cnt))))}))
+;; This handler defines a set of endpoints via Compojure's `routes` macro.  Notice that above
+;; we've added the `GET` macro via `:refer` so it doesn't have to be qualified.  We wrap the
+;; result in `ring.middleware.params/wrap-params` so that we can get the `count` parameter in
+;; `streaming-numbers-handler`.
+;;
+;; Notice that at the bottom we define a default `compojure.route/not-found` handler, which
+;; will return a `404` status.  If we don't do this, a call to a URI we don't recognize will
+;; return a `nil` response, which will cause Aleph to log an error.
+(def handler
+  (params/wrap-params
+    (compojure/routes
+      (GET "/hello"         [] hello-world-handler)
+      (GET "/delayed_hello" [] delayed-hello-world-handler)
+      (GET "/numbers"       [] streaming-numbers-handler)
+      (route/not-found "No such page."))))
+
+(defn start-httpserver [port]
+  (log/info :http-server/starting {:port port})
+  (http/start-server handler {:port port})
+  )
+
+(defmethod ig/init-key ::httpd
+  [_ {:keys [port]}]
+  (start-httpserver port))
+#+END_SRC
+
+***** ws_server.clj
+#+BEGIN_SRC clojure :tangle ./src/$1/server/ws_server.clj
+(ns $1.server.ws-server
+  (:require
+    [aleph.http :as http]
+    [byte-streams :as bs]
+    [manifold.stream :as s]
+    [manifold.deferred :as d]
+    [ring.middleware.params :as params]
+    [compojure.route :as route]
+    [compojure.response :refer [Renderable]]
+    [integrant.core :as ig]
+    [io.pedestal.log :as log]))
+
+(def non-websocket-request
+  {:status 400
+   :headers {"content-type" "application/text"}
+   :body "Expected a websocket request."})
+
+(defn echo-handler
+  "The previous handler blocks until the websocket handshake completes, which unnecessarily
+   takes up a thread.  This accomplishes the same as above, but asynchronously. "
+  [req]
+  (-> (http/websocket-connection req)
+    (d/chain
+      (fn [socket]
+        (s/connect socket socket)))
+    (d/catch
+      (fn [_]
+        non-websocket-request))))
+
+(def handler
+  (params/wrap-params
+    (compojure/routes
+      (GET "/echo" [] echo-handler)
+      (route/not-found "No such page."))))
+
+(defn start-wsserver [port]
+  (log/info :ws-server/starting {:port port})
+  (http/start-server handler {:port port})
+  )
+
+(defmethod ig/init-key ::wsd
+  [_ {:keys [port]}]
+  (start-wsserver port))
+#+END_SRC
+
+***** udp_server.clj
+udp server with aleph
+#+BEGIN_SRC clojure :tangle ./src/$1/server/udp_server.clj
+(ns $1.server.udp-server
+  (:require
+    [aleph.http :as http]
+    [byte-streams :as bs]
+    [manifold.stream :as s]
+    [ring.middleware.params :as params]
+    [compojure.route :as route]
+    [compojure.response :refer [Renderable]]
+    [integrant.core :as ig]
+    [io.pedestal.log :as log]))
+
+(defn parse-udp-packet
+  "This is the inverse operation of `send-metrics!`, taking the message, splitting it on the
+   colon delimiter, and parsing the `value`."
+  [{:keys [message]}]
+  (let  [message        (bs/to-string message)
+        [metric value] (str/split message #":")]
+        [metric (Long/parseLong value)]
+         _  (log/info :udp/recv {:msg message})]
+        )
+
+(defn get-and-set!
+  "An atomic operation which returns the previous value, and sets it to `new-val`."
+  [a new-val]
+  (let [old-val @a]
+    (if (compare-and-set! a old-val new-val)
+      old-val
+      (recur a new-val))))
+
+(defn start-udpd-server
+  [port]
+  (let [accumulator   (atom {})
+        server-socket @(udp/socket {:port port})
+        _             (log/info :udp/server-starting {:port port})
+        ;; Once a second, take all the values that have accumulated, `put!` them out, and
+        ;; clear the accumulator.
+        metric-stream (s/periodically 1000 #(get-and-set! accumulator {}))]
+
+    ;; Listens on a socket, parses each incoming message, and increments the appropriate metric.
+    (->> server-socket
+      (s/map parse-udp-packet)
+      (s/consume
+        (fn [[metric value]]
+          (swap! accumulator update metric #(+ (or % 0) value)))))
+
+    ;; If `metric-stream` is closed, close the associated socket.
+    (s/on-drained metric-stream #(s/close! server-socket))
+
+    metric-stream))
+
+
+(defmethod ig/init-key ::udpd
+  [_ {:keys [port]}]
+  (start-udpd-server port))
+#+END_SRC
+*** Config
+
+**** dev.edn
+#+BEGIN_SRC clojure :tangle ./dev/dev.edn
+{:taoensso.timbre/logging-config {:level :debug}}
+
+#+END_SRC
+* Resources
+** index.html
+#+BEGIN_SRC html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Client </title>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+</head>
+<body>
+<div id="app"></div>
+<!-- you might need to change the js path depending on your configuration -->
+<script src="js/main.js" type="text/javascript"></script>
+</body>
+</html>
+#+END_SRC
+** config.edn
+#+BEGIN_SRC clojure :tangle ./src/config.edn
+{:http/port 5000
+ :ws/port 5001
+ :udp/port  5002
+ :ig/system {:$1/server_components/httpd   {:port #ref [:http/port] }
+             :$1/server_components/wsd     {:port #ref [:ws/port] }
+             :$1/server_components/udpd    {:port #ref [:udp/port] }
+             }}
+#+END_SRC

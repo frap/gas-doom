@@ -70,7 +70,7 @@
 (setq which-key-idle-delay 0.5) ;; I need the help, I really do
 
 
-;(add-to-list 'org-structure-template-alist '("r" . "src rust"))
+
 ;; ** tools
 ;;
 ;; ** features
@@ -78,19 +78,19 @@
 ;; S-down to move between windows. This is much more convenient and
 ;; efficient than using the default binding, C-x o, to cycle through
 ;; all of them in an essentially unpredictable order.
-;; (use-package! windmove
-;;   :demand t
-;;   :config
+(use-package! windmove
+  :demand t
+  :config
 
-;;   (windmove-default-keybindings)
+  (windmove-default-keybindings)
 
-;;   ;; Introduced in Emacs 27:
+  ;; Introduced in Emacs 27:
 
-;;   (when (fboundp 'windmove-display-default-keybindings)
-;;     (windmove-display-default-keybindings))
+  (when (fboundp 'windmove-display-default-keybindings)
+    (windmove-display-default-keybindings))
 
-;;   (when (fboundp 'windmove-delete-default-keybindings)
-;;     (windmove-delete-default-keybindings)))
+  (when (fboundp 'windmove-delete-default-keybindings)
+    (windmove-delete-default-keybindings)))
 
 ;; Feature `winner' provides an undo/redo stack for window
 ;; configurations, with undo and redo being C-c left and C-c right,
@@ -98,24 +98,24 @@
 ;; rather a whole sequence of them.) For instance, you can use C-x 1
 ;; to focus on a particular window, then return to your previous
 ;; layout with C-c left.
-;(use-package! winner
-;  :demand t
-;  :config
-;   (map! :map winner-mode-map
-;        "<M-right>" #'winner-redo
-;        "<M-left>" #'winner-undo)
-;  (winner-mode +1))
+(use-package! winner
+ :demand t
+ :config
+  (map! :map winner-mode-map
+       "<M-right>" #'winner-redo
+       "<M-left>" #'winner-undo)
+ (winner-mode +1))
 
-;; (setq search-highlight t
-;;       search-whitespace-regexp ".*?"
-;;       isearch-lax-whitespace t
-;;       isearch-regexp-lax-whitespace nil
-;;       isearch-lazy-highlight t
-;;       isearch-lazy-count t
-;;       lazy-count-prefix-format " (%s/%s) "
-;;       lazy-count-suffix-format nil
-;;       isearch-yank-on-move 'shift
-;;   isearch-allow-scroll 'unlimited)
+(setq search-highlight t
+      search-whitespace-regexp ".*?"
+      isearch-lax-whitespace t
+      isearch-regexp-lax-whitespace nil
+      isearch-lazy-highlight t
+      isearch-lazy-count t
+      lazy-count-prefix-format " (%s/%s) "
+      lazy-count-suffix-format nil
+      isearch-yank-on-move 'shift
+      isearch-allow-scroll 'unlimited)
 
 
 (after! dired
@@ -129,6 +129,9 @@
   :init
   (map! :map dired-mode-map
         :desc "narrow" "/" #'dired-narrow-fuzzy))
+
+;; Reuse dired buffers
+(put 'dired-find-alternate-file 'disabled nil)
 
 ;; *** deadgrep
 (use-package! deadgrep

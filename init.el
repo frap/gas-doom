@@ -47,7 +47,6 @@
          (popup
            +all          ; catch all popups that start with an asterix
            +defaults))   ; tame sudden yet inevitable temporary windows
-       pretty-code       ; ligatures or substitute text with pretty symbols
        ;;tabs              ; an tab bar for Emacs
        ;;treemacs          ; a project drawer, like neotree but cooler
        ;;unicode           ; extended unicode support for various languages
@@ -87,7 +86,7 @@
 
        :checkers
        syntax              ; tasing you for every semicolon you forget
-       (spell +hunspell)             ; tasing you for misspelling mispelling
+       (spell +aspell)             ; tasing you for misspelling mispelling
        ;;grammar           ; tasing grammar mistake every you make
 
        :tools
@@ -97,25 +96,27 @@
        docker
        editorconfig      ; let someone else argue about tabs vs spaces
        ;;ein               ; tame Jupyter notebooks with emacs
-       (eval +overlay)     ; run code, run (also, repls)
+       ;; (eval +overlay)     ; run code, run (also, repls)
        ;;gist              ; interacting with github gists
        (lookup              ; navigate your code and its documentation
          +dictionary       ; dictionary/thesauraus is nice
          +docsets)                 ; -- or in dash docsets locally
       ;;lsp
-       (:if IS-MAC
-         (macos))          ; MacOS-specific commands
        (magit               ; a git porcelain for Emacs
         +forge)
        make                ; run make tasks from Emacs
        ;;pass              ; password manager for nerds
-       pdf               ; pdf enhancements
+       ;;pdf               ; pdf enhancements
        ;;prodigy           ; FIXME managing external services & code builders
        rgb               ; creating color strings
        ;;taskrunner        ; taskrunner for all your projects
        terraform         ; infrastructure as code
        ;;tmux              ; an API for interacting with tmux
        upload            ; map local to remote projects via ssh/ftp
+
+       :os
+       (:if IS-MAC
+         (macos))          ; MacOS-specific commands
 
        :lang
        ;;agda              ; types of types of types of types...
@@ -127,7 +128,7 @@
        ;;csharp            ; unity, .NET, and mono shenanigans
        data              ; config/data formats
        ;;(dart +flutter)   ; paint ui and not much else
-       elixir            ; erlang done right
+       ;;elixir            ; erlang done right
        ;;elm               ; care for a cup of TEA?
        emacs-lisp        ; drown in parentheses
        erlang            ; an elegant language for a more civilized age
@@ -145,11 +146,11 @@
        javascript        ; all(hope(abandon(ye(who(enter(here))))))
        ;;julia             ; a better, faster MATLAB
        ;;kotlin            ; a better, slicker Java(Script)
-       (:if IS-MAC
-           (latex             ; writing papers in Emacs has never been so fun
-             +latexmk
-             +cdlatex          ; quick maths symbols
-             +fold))                  ; fold the clutter away
+       ;;(:if IS-MAC
+       ;;    (latex             ; writing papers in Emacs has never been so fun
+       ;;      +latexmk
+       ;;      +cdlatex          ; quick maths symbols
+       ;;      +fold))                  ; fold the clutter away
       ;;lean
        ;;factor
        ;;ledger            ; an accounting system in Emacs

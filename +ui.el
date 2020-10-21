@@ -16,6 +16,3 @@
 ;; Disable trailing whitespaces in the minibuffer
 (add-hook! '(minibuffer-setup-hook doom-popup-mode-hook)
   (setq-local show-trailing-whitespace nil))
-
-;; Reuse dired buffers
-(put 'dired-find-alternate-file 'disabled nil)
