@@ -1,5 +1,5 @@
 # -*- mode: org -*-
-#+TITLE: obtt-clj
+#+TITLE: clj-obtt
 
 Gases basic project setup for clojure app.
 
@@ -21,14 +21,13 @@ Basic Clojure structure with src, test, resources and a dev repl
 setup.
 
 #+BEGIN_SRC shell :obtt eval
-mkdir -p src/$1 test/$1 resource/public
-mkdir dev src/$1/server
+mkdir -p src/$1 test/$1 resources/public dev
 #+END_SRC
 
 * Project files
 ** deps.edn
 #+BEGIN_SRC clojure :tangle ./deps.edn
-{:paths   ["src/" "resources"]
+{:paths   ["src" "resources"]
 
  :deps    {org.clojure/clojure                 {:mvn/version "1.10.1"}
            manifold/manifold                   {:mvn/version "0.1.9-alpha3"}
@@ -49,6 +48,8 @@ mkdir dev src/$1/server
            ring/ring-defaults                  {:mvn/version "0.3.2"}
            ;;logging
            io.pedestal/pedestal.log            {:mvn/version "0.5.8"}
+           ch.qos.logback/logback-classic      {:mvn/version "1.2.3"
+                                                :exclusions [org.slf4j/slf4j-api]}
            }
 
  :aliases
@@ -85,19 +86,13 @@ Tests are important even in experimental code, blah blah...
 #+BEGIN_SRC clojure :tangle ./test/$1/sample_test.cljc
 (ns $1.sample-test
   (:require
-    [clojure.test :refer [deftest]]
-    [fulcro-spec.core :refer [specification provided behavior assertions]]))
+   [clojure.test :refer [deftest is testing]]
+   ))
 
-; Tests for both client and server
+                                        ; Tests for both client and server
 (deftest sample-test
-  (behavior "addition computes addition correctly"
-    (assertions
-      "with positive integers"
-      (+ 1 5 3) => 9
-      "with negative integers"
-      (+ -1 -3 -5) => -9
-      "with a mix of signed integers"
-      (+ +5 -3) => 2)))
+  (testing "addition computes addition correctly"
+    (is  = (+ 5 -3) 2 )))
 
 #+END_SRC
 * Sources
@@ -105,8 +100,8 @@ Tests are important even in experimental code, blah blah...
 
 *** user.clj
 #+BEGIN_SRC clojure :tangle ./dev/user.clj :mkdirp yes :padline no
-;; shamelessly copied from Juxt Edge
 (ns user
+  "shamelessly copied from Juxt Edge"
   (:require
    [clojure.tools.namespace.repl :refer :all]
    [clojure.java.classpath :refer [classpath-directories]]
@@ -137,7 +132,6 @@ Tests are important even in experimental code, blah blah...
 
 *** dev.clj
 #+BEGIN_SRC clojure :tangle ./dev/dev.clj
-
 (ns ^{:clojure.tools.namespace.repl/load false} dev
    (:require
    [clojure.test :refer [run-tests]]
@@ -315,8 +309,8 @@ meta information
             (useful-info k (get config k) (get state k)))))
 #+END_SRC
 And the test system
-#+BEGIN_SRC clojure  ./test/$1/test/system.clj
-  (ns $1.test.system
+#+BEGIN_SRC clojure :tangle ./test/$1/system_test.clj
+  (ns $1.system-test
   (:require
    [integrant.core :as ig]
    [$1.system]))
@@ -353,12 +347,142 @@ And the test system
    (fn [f]
      (with-system (system) ks
        (f)))))
-;; end of $1.test.system
 #+END_SRC
 
 ** Main
 *** App
 **** App
+*** Logging
+
+#+BEGIN_SRC clojure :tangle ./src/logback.xml
+<!-- Logback Configuration. See http://logback.qos.ch/ -->
+<!-- Adapted from https://github.com/stuartsierra/log.dev/blob/master/resources/logback.xml -->
+<!-- <configuration scan="true" scanPeriod="1 seconds"> -->
+<configuration>
+
+  <property resource="log_dev_app.properties" />
+
+   <!-- Console (STDOUT) output. -->
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+
+    <!-- Only print log messages at level WARN or higher. -->
+    <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+      <level>WARN</level>
+    </filter>
+
+    <!-- Default encoder is ch.qos.logback.classic.encoder.PatternLayoutEncoder -->
+    <encoder>
+      <!-- two-line layout suitable for a terminal -->
+      <pattern>%date{HH:mm:ss.SSS} %highlight(%-5level) %logger [%thread]%n%msg%n</pattern>
+      <charset>UTF-8</charset>
+    </encoder>
+  </appender>
+
+
+  <!-- The output file configuration for log/all.log -->
+  <appender name="ALL_LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+    <!-- Default encoder is ch.qos.logback.classic.encoder.PatternLayoutEncoder -->
+    <encoder>
+      <pattern>%date{HH:mm:ss.SSS} %-5level %logger{25}: %msg %X thread=%thread%n</pattern>
+    </encoder>
+
+    <!-- Default location of log file is log/all.log -->
+    <file>log/all.log</file>
+
+    <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+      <!-- Roll over log files daily -->
+      <fileNamePattern>log/all.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+
+      <!-- And start a new file every 64 MB -->
+      <maxFileSize>64 MB</maxFileSize>
+
+      <!-- Keep at most 15 days of history -->
+      <maxHistory>15</maxHistory>
+
+      <!-- Up to a maximum of 512 MB -->
+      <totalSizeCap>512MB</totalSizeCap>
+
+      <!-- Ensure short-lived processes still clean up old logs -->
+      <cleanHistoryOnStart>true</cleanHistoryOnStart>
+    </rollingPolicy>
+  </appender>
+
+
+  <!-- The output file configuration for log/app.log -->
+  <appender name="APP_LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+    <!-- Default encoder is ch.qos.logback.classic.encoder.PatternLayoutEncoder -->
+    <encoder>
+      <pattern>%date{HH:mm:ss.SSS} %-5level %logger{25}: %msg %X thread=%thread%n</pattern>
+    </encoder>
+
+    <!-- Default location of log file is log/app.log -->
+    <file>log/app.log</file>
+
+    <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+      <!-- Roll over log files daily -->
+      <fileNamePattern>log/app.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+
+      <!-- And start a new file every 64 MB -->
+      <maxFileSize>64 MB</maxFileSize>
+
+      <!-- Keep at most 15 days of history -->
+      <maxHistory>15</maxHistory>
+
+      <!-- Up to a maximum of 512 MB -->
+      <totalSizeCap>512MB</totalSizeCap>
+
+      <!-- Ensure short-lived processes still clean up old logs -->
+      <cleanHistoryOnStart>true</cleanHistoryOnStart>
+    </rollingPolicy>
+  </appender>
+
+
+
+  <!-- Root log level is "ALL", meaning all log levels are emitted. -->
+  <root level="ALL">
+
+    <!-- Send all log messages to console (filtered to WARN) -->
+    <appender-ref ref="CONSOLE" />
+
+    <!-- Send all log messages to log/all.log -->
+    <appender-ref ref="ALL_LOG_FILE" />
+  </root>
+
+  <logger name="$1" level="DEBUG"/>
+
+
+  <!-- Log messages from your application will be included in
+       log/all.log. In addition, we will send just messages from your
+       application to log/app.log -->
+  <logger name="${app_root_logger:-com.example.application}" level="ALL">
+    <appender-ref ref="APP_LOG_FILE" />
+  </logger>
+
+  <!-- If you have a REPL or interactive shell with a logger named
+       'user' or 'dev', send those messages to log/app.log too. -->
+  <logger name="user" level="ALL">
+    <appender-ref ref="APP_LOG_FILE" />
+  </logger>
+  <logger name="dev" level="ALL">
+    <appender-ref ref="APP_LOG_FILE" />
+  </logger>
+
+  <!-- figwheel puts some useful warnings through as INFO rather than WARN
+       See: https://github.com/bhauman/figwheel-main/issues/130
+       -->
+  <logger name="figwheel.logg" level="INFO">
+    <appender-ref ref="CONSOLE" />
+  </logger>
+
+  <!-- Make java.util.logging more efficient at disabled levels.
+       See http://logback.qos.ch/manual/configuration.html#LevelChangePropagator -->
+  <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+    <resetJUL>true</resetJUL>
+  </contextListener>
+</configuration>
+#+END_SRC
 **** Server Components
 
 ***** http_server.clj
@@ -369,8 +493,10 @@ Aleph http server
     [aleph.http :as http]
     [byte-streams :as bs]
     [manifold.stream :as s]
-    [ring.middleware.params :as params]
+    [manifold.deferred :as d]
+    [ring.middleware.params :refer [wrap-params]]
     [compojure.route :as route]
+    [compojure.core :refer [defroutes GET]]
     [compojure.response :refer [Renderable]]
     [integrant.core :as ig]
     [io.pedestal.log :as log]))
@@ -432,7 +558,7 @@ Aleph http server
 ;; will return a '404' status.  If we don't do this, a call to a URI we don't recognize will
 ;; return a 'nil' response, which will cause Aleph to log an error.
 (def handler
-  (params/wrap-params
+  (wrap-params
     (compojure/routes
       (GET "/hello"         [] hello-world-handler)
       (GET "/delayed_hello" [] delayed-hello-world-handler)
@@ -514,11 +640,11 @@ udp server with aleph
   "This is the inverse operation of 'send-metrics!', taking the message, splitting it on the
    colon delimiter, and parsing the 'value'."
   [{:keys [message]}]
-  (let  [message        (bs/to-string message)
+  (let  [message        (bs/to-string message)]
         [[metric value] (str/split message #":")]
         [metric (Long/parseLong value)]
         [_  (log/info :udp/recv {:msg message})]
-        ])
+        )
 
 (defn get-and-set!
   "An atomic operation which returns the previous value, and sets it to 'new-val'."
@@ -583,8 +709,8 @@ udp server with aleph
 {:http/port 5000
  :ws/port 5001
  :udp/port  5002
- :ig/system {:$1/server_components/httpd   {:port #ref [:http/port] }
-             :$1/server_components/wsd     {:port #ref [:ws/port] }
-             :$1/server_components/udpd    {:port #ref [:udp/port] }
+ :ig/system {:$1.server.http-server/httpd   {:port #ref [:http/port] }
+             :$1.server.ws-server/wsd     {:port #ref [:ws/port] }
+             :$1.server.udp-server/udpd    {:port #ref [:udp/port] }
              }}
 #+END_SRC

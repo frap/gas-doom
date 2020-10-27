@@ -15,4 +15,4 @@
 (modify-coding-system-alist 'file "" 'utf-8-unix)
 
 ;; yasnipeet enabel nested snippets
-(setq yas-triggers-in-field t)
+;;(setq yas-triggers-in-field t)
