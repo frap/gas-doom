@@ -175,12 +175,12 @@
   ;; brackets. However, this breaks escape sequences in the terminal,
   ;; so it may be controversial upstream. We only enable the
   ;; keybinding in windowed mode.
-  (when (display-graphic-p)
-    (setf (map-elt sp-paredit-bindings "M-[") #'sp-wrap-square))
+  ;;(when (display-graphic-p)
+  ;;  (setf (map-elt sp-paredit-bindings "M-[") #'sp-wrap-square))
 
   ;; Set up keybindings for s-expression navigation and manipulation
   ;; in the style of Paredit.
-  (sp-use-paredit-bindings)
+  ;(sp-use-paredit-bindings)
 
   ;; Highlight matching delimiters.
   (show-smartparens-global-mode +1)
@@ -200,31 +200,6 @@
   (bind-key [remap kill-line] #'sp-kill-hybrid-sexp smartparens-mode-map
             (apply #'derived-mode-p sp-lisp-modes))
 
-  (defun radian--smartparens-indent-new-pair (&rest _)
-    "Insert an extra newline after point, and reindent."
-    (newline)
-    (indent-according-to-mode)
-    (forward-line -1)
-    (indent-according-to-mode))
 
-  ;; The following is a really absurdly stupid hack that I can barely
-  ;; stand to look at. It needs to be fixed.
-  ;;
-  ;; Nevertheless, I can't live without the feature it provides (which
-  ;; should really come out of the box IMO): when pressing RET after
-  ;; inserting a pair, add an extra newline and indent. See
-  ;; <https://github.com/Fuco1/smartparens/issues/80#issuecomment-18910312>.
 
-  (defun radian--smartparens-pair-setup (mode delim)
-    "In major mode MODE, set up DELIM with newline-and-indent."
-    (sp-local-pair mode delim nil :post-handlers
-                   '((radian--smartparens-indent-new-pair "RET")
-                     (radian--smartparens-indent-new-pair "<return>"))))
-
-  ;; Work around https://github.com/Fuco1/smartparens/issues/783.
-  (setq sp-escape-quotes-after-insert nil)
-
-  ;; Quiet some silly messages.
-  (dolist (key '(:unmatched-expression :no-matching-tag))
-    (setf (cdr (assq key sp-message-alist)) nil))
   )

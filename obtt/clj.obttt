@@ -1,6 +1,5 @@
 # -*- mode: org -*-
-#+TITLE: basic-clj
-# coding: utf-8
+#+TITLE: obtt-clj
 
 Gases basic project setup for clojure app.
 
@@ -11,9 +10,7 @@ Gases basic project setup for clojure app.
 
 * README
 #+BEGIN_SRC org :tangle ./README.org
-,#+TITLE: $1
-
-basic clojure template using integrant adn aleph
+#+TITLE: $1
 
 $2
 #+END_SRC
@@ -139,9 +136,8 @@ Tests are important even in experimental code, blah blah...
 #+END_SRC
 
 *** dev.clj
-#+BEGIN_SRC clojure :tangle ./dev/dev.clj :mkdirp yes :padline no
-;; Copyright © 2020 Red Elvis
-;; shamelessly copied from Juxt Edge
+#+BEGIN_SRC clojure :tangle ./dev/dev.clj
+
 (ns ^{:clojure.tools.namespace.repl/load false} dev
    (:require
    [clojure.test :refer [run-tests]]
@@ -159,7 +155,7 @@ Tests are important even in experimental code, blah blah...
         (catch ClassNotFoundException _
           false))
   (eval
-    `(do
+    \`(do
        (org.slf4j.bridge.SLF4JBridgeHandler/removeHandlersForRootLogger)
        (org.slf4j.bridge.SLF4JBridgeHandler/install))))
 
@@ -175,8 +171,8 @@ Tests are important even in experimental code, blah blah...
 
 (defmacro ^:private proxy-ns
   [ns & vars]
-  (cons `do
-        (map (fn [v] `(do (def ~v ~(symbol (str ns) (str v)))
+  (cons \`do
+        (map (fn [v] \`(do (def ~v ~(symbol (str ns) (str v)))
                           (alter-meta!
                             (resolve '~v)
                             merge
@@ -201,7 +197,7 @@ Tests are important even in experimental code, blah blah...
 
 (defmacro ^:private watch-var
   [s alias]
-  `(do
+  \`(do
      (def ~alias ~s)
      (add-watch (var ~s)
                 (keyword "dev" ~(name alias))
@@ -211,7 +207,7 @@ Tests are important even in experimental code, blah blah...
                     (constantly new#))))))
 
 (watch-var integrant.repl.state/system ^{:doc "After starting your dev system, this will be the system that was started.  You can use this to get individual components and test them in the repl."} system)
-(watch-var integrant.repl.state/config ^{:doc "The :ig/system key used to create `system`"} system-config)
+(watch-var integrant.repl.state/config ^{:doc "The :ig/system key used to create 'system'"} system-config)
 
 (defn go
   "Start the dev system, and output any useful information about the system
@@ -227,7 +223,7 @@ Tests are important even in experimental code, blah blah...
     res))
 
 (defn resume
-  "Like `go`, but works on a system suspended with `suspend`."
+  "Like go, but works on a system suspended with suspend."
   []
   (let [res (integrant.repl/resume)]
     (doseq [message (system.meta/useful-infos system-config system)]
@@ -237,9 +233,9 @@ Tests are important even in experimental code, blah blah...
 (integrant.repl/set-prep! #(system/system-config {:profile :dev}))
 
 (defn set-prep!
-  "Set the opts passed to `aero.core/read-config` for the development system.
+  "Set the opts passed to 'aero.core/read-config' for the development system.
 
-  Example: `(set-prep! {:profile :dev :features [:in-memory-postgres]})`"
+  Example: '(set-prep! {:profile :dev :features [:in-memory-postgres]})'"
   [aero-opts]
   (integrant.repl/set-prep! #(system/system-config aero-opts)))
 
@@ -319,7 +315,7 @@ meta information
             (useful-info k (get config k) (get state k)))))
 #+END_SRC
 And the test system
-#+BEGIN_SRC clojure :tangle ./test/$1/test/system.clj :mkdirp yes :padline no
+#+BEGIN_SRC clojure  ./test/$1/test/system.clj
   (ns $1.test.system
   (:require
    [integrant.core :as ig]
@@ -329,7 +325,7 @@ And the test system
 
 (defmacro ^:private with-system
   [system ks & body]
-  `(let [system# ~system
+  \`(let [system# ~system
          s# (ig/init system# (or ~ks (keys system#)))]
      (try
        (binding [*system* s#]
@@ -388,7 +384,7 @@ Aleph http server
 
 ;; Compojure will normally dereference deferreds and return the realized value.
 ;; Unfortunately, this blocks the thread. Since Aleph can accept the unrealized
-;; deferred, we extend Compojure's `Renderable` protocol to pass the deferred
+;; deferred, we extend Compojure's 'Renderable' protocol to pass the deferred
 ;; through unchanged so it can be handled asynchronously.
 (extend-protocol Renderable
   clojure.lang.IDeref
@@ -397,9 +393,9 @@ Aleph http server
 (defn delayed-hello-world-handler
   "A non-standard response handler that returns a deferred which yields a Ring response
    after one second.  In a typical Ring-compliant server, this would require holding onto a
-   thread via `Thread.sleep()` or a similar mechanism, but the use of a deferred allows for
+   thread via 'Thread.sleep()' or a similar mechanism, but the use of a deferred allows for
    the thread to be immediately released without an immediate response.
-   This is an atypical usage of `manifold.deferred/timeout!`, which puts a 'timeout value'
+   This is an atypical usage of 'manifold.deferred/timeout!', which puts a 'timeout value'
    into a deferred after an interval if it hasn't already been realized.  Here there's nothing
    else trying to touch the deferred, so it will simply yield the 'hello world' response after
    1000 milliseconds."
@@ -414,11 +410,11 @@ Aleph http server
    milliseconds.  While this would typically be represented by a lazy sequence, instead we use
    a Manifold stream.  Similar to the use of the deferred above, this means we don't need
    to allocate a thread per-request.
-   In this handler we're assuming the string value for `count` is a valid number.  If not,
-   `Integer.parseInt()` will throw an exception, and we'll return a `500` status response
+   In this handler we're assuming the string value for 'count' is a valid number.  If not,
+   'Integer.parseInt()' will throw an exception, and we'll return a '500' status response
    with the stack trace.  If we wanted to be more precise in our status, we'd wrap the parsing
-   code with a try/catch that returns a `400` status when the `count` is malformed.
-   `manifold.stream/periodically` is similar to Clojure's `repeatedly`, except that it emits
+   code with a try/catch that returns a '400' status when the 'count' is malformed.
+   'manifold.stream/periodically' is similar to Clojure's 'repeatedly', except that it emits
    the value returned by the function at a fixed interval."
   [{:keys [params]}]
   (let [cnt (Integer/parseInt (get params "count" "0"))]
@@ -427,14 +423,14 @@ Aleph http server
      :body (let [sent (atom 0)]
              (->> (s/periodically 100 #(str (swap! sent inc) "\n"))
                (s/transform (take cnt))))}))
-;; This handler defines a set of endpoints via Compojure's `routes` macro.  Notice that above
-;; we've added the `GET` macro via `:refer` so it doesn't have to be qualified.  We wrap the
-;; result in `ring.middleware.params/wrap-params` so that we can get the `count` parameter in
-;; `streaming-numbers-handler`.
+;; This handler defines a set of endpoints via Compojure's 'routes' macro.  Notice that above
+;; we've added the 'GET' macro via ':refer' so it doesn't have to be qualified.  We wrap the
+;; result in 'ring.middleware.params/wrap-params' so that we can get the 'count' parameter in
+;; 'streaming-numbers-handler'.
 ;;
-;; Notice that at the bottom we define a default `compojure.route/not-found` handler, which
-;; will return a `404` status.  If we don't do this, a call to a URI we don't recognize will
-;; return a `nil` response, which will cause Aleph to log an error.
+;; Notice that at the bottom we define a default 'compojure.route/not-found' handler, which
+;; will return a '404' status.  If we don't do this, a call to a URI we don't recognize will
+;; return a 'nil' response, which will cause Aleph to log an error.
 (def handler
   (params/wrap-params
     (compojure/routes
@@ -515,17 +511,17 @@ udp server with aleph
     [io.pedestal.log :as log]))
 
 (defn parse-udp-packet
-  "This is the inverse operation of `send-metrics!`, taking the message, splitting it on the
-   colon delimiter, and parsing the `value`."
+  "This is the inverse operation of 'send-metrics!', taking the message, splitting it on the
+   colon delimiter, and parsing the 'value'."
   [{:keys [message]}]
   (let  [message        (bs/to-string message)
-        [metric value] (str/split message #":")]
+        [[metric value] (str/split message #":")]
         [metric (Long/parseLong value)]
-         _  (log/info :udp/recv {:msg message})]
-        )
+        [_  (log/info :udp/recv {:msg message})]
+        ])
 
 (defn get-and-set!
-  "An atomic operation which returns the previous value, and sets it to `new-val`."
+  "An atomic operation which returns the previous value, and sets it to 'new-val'."
   [a new-val]
   (let [old-val @a]
     (if (compare-and-set! a old-val new-val)
@@ -537,7 +533,7 @@ udp server with aleph
   (let [accumulator   (atom {})
         server-socket @(udp/socket {:port port})
         _             (log/info :udp/server-starting {:port port})
-        ;; Once a second, take all the values that have accumulated, `put!` them out, and
+        ;; Once a second, take all the values that have accumulated, 'put!' them out, and
         ;; clear the accumulator.
         metric-stream (s/periodically 1000 #(get-and-set! accumulator {}))]
 
@@ -548,7 +544,7 @@ udp server with aleph
         (fn [[metric value]]
           (swap! accumulator update metric #(+ (or % 0) value)))))
 
-    ;; If `metric-stream` is closed, close the associated socket.
+    ;; If 'metric-stream' is closed, close the associated socket.
     (s/on-drained metric-stream #(s/close! server-socket))
 
     metric-stream))

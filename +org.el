@@ -18,33 +18,33 @@
 
 
 ;; like the comments header-argument
-(setq org-babel-default-header-args
-      '((:session . "none")
-        (:results . "replace")
-        (:exports . "code")
-        (:cache . "no")
-        (:noweb . "no")
-        (:hlines . "no")
-        (:tangle . "no")
-         (:comments . "link")))
+; (setq org-babel-default-header-args
+;      '((:session . "none")
+;        (:results . "replace")
+;        (:exports . "code")
+;        (:cache . "no")
+;        (:noweb . "no")
+;        (:hlines . "no")
+;        (:tangle . "no")
+;        (:comments . "link")))
 
 (use-package! org
-  :mode ("\\.org\\'" . org-mode)
+  :mode ("\\.obtt\\'" . org-mode)
   :init
   (setq
-    org-babel-load-languages
-    '((emacs-lisp . t)
-       (shell . t)
-       (clojure . t)
-       (dot . t)
-       (R . t)
-       (sql . t)
-       (awk . t)
-       (css . t)
-       (js . t)
-       (plantuml . t)
+;    org-babel-load-languages
+;    '((emacs-lisp . t)
+;       (shell . t)
+;       (clojure . t)
+;       (dot . t)
+;       (R . t)
+;       (sql . t)
+;       (awk . t)
+;       (css . t)
+;       (js . t)
+;       (plantuml . t)
        ;;                                (make . t)
-       (sed . t))
+;       (sed . t))
     org-structure-template-alist
     '(("a" . "export ascii")
        ("c" . "center")
@@ -65,8 +65,13 @@
 
 ;(add-to-list 'org-structure-template-alist '("r" . "src rust"))
 ;; My Spelling is atrocious
-(after! org (add-hook 'org-mode-hook 'turn-on-flyspell))
+;;(after! org (add-hook 'org-mode-hook 'turn-on-flyspell))
 
+(after! org
+  (require 'ob-clojure)
+  (setq org-babel-clojure-backend 'cider)
+  (require 'cider)
+  )
 (use-package! doct
   :commands (doct))
 

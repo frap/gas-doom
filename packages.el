@@ -11,9 +11,9 @@
 (package! org-clock-convenience :ignore t)
 (package! company-posframe)
 
-(package! doom-snippets :ignore t)
+;;(package! doom-snippets :ignore t)
 ;; If you want to replace it with yasnippet's default snippets
-(package! yasnippet-snippets)
+;;(package! yasnippet-snippets)
 (package! obtt :recipe (:host github :repo "timotheosh/obtt"))
 ;;(package! flycheck-clj-kondo)
 (package! doct

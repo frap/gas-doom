@@ -20,8 +20,8 @@
 
        :completion
        (:if IS-MAC
-       (company +childframe)       ; the ultimate code completion backend
-       (company +tng))
+       (company +childframe) ; the ultimate code completion backend
+       (company +tng))       ; tng is tab completion
        ;;helm              ; the *other* search engine for love and life
        ;;ido               ; the other *other* search engine...
        (:if IS-MAC
@@ -33,6 +33,7 @@
        doom              ; what makes DOOM look the way it does
        doom-dashboard    ; a nifty splash screen for Emacs
        doom-quit         ; DOOM quit-message prompts when you quit Emacs
+       (emoji +ascii +github +unicode)
        ;;fill-column       ; a `fill-column' indicator
        hl-todo           ; highlight TODO/FIXME/NOTE/DEPRECATED/HACK/REVIEW
        hydra
@@ -53,8 +54,8 @@
        vc-gutter         ; vcs diff in the fringe
        vi-tilde-fringe   ; fringe tildes to mark beyond EOB
        (window-select +numbers)     ; visually switch windows
-       workspaces        ; tab emulation, persistence & separate workspaces
-       ;;zen               ; distraction-free coding or writing
+       ;;workspaces        ; tab emulation, persistence & separate workspaces
+       zen               ; distraction-free coding or writing
 
        :editor
        ;;(evil +everywhere); come to the dark side, we have cookies
@@ -67,15 +68,15 @@
        ;;objed             ; text object editing for the innocent
        ;;parinfer          ; turn lisp into python, sort of
        ;;rotate-text       ; cycle region at point between text candidates
-       snippets            ; my elves. They type so I don't have to
-       ;;word-wrap         ; soft wrapping with language-aware indent
+       ;;snippets            ; my elves. They type so I don't have to
+       word-wrap         ; soft wrapping with language-aware indent
 
        :emacs
        (dired +icons)             ; making dired pretty [functional]
        electric          ; smarter, keyword-based electric-indent
        (ibuffer +icons)         ; interactive buffer management
        (undo +tree)              ; persistent, smarter undo for your inevitable mistakes
-       mistakes
+       ;;mistakes
        vc                ; version-control and Emacs, sitting in a tree
 
        :term
@@ -161,16 +162,13 @@
        ;;Ocaml             ; An objective camel
        (org               ; organize your plain life in plain text
          +pretty                     ; yessss my pretties! (nice unicode symbols)
-         +babel
-         +capture
          +dragndrop
-         +export
          +roam
          +pandoc
          +journal
          +pomodoro
          +gnuplot                    ; who doesn't like pretty pictures
-         +protocol)
+         +present)
        ;;php               ; perl's insecure younger brother
        plantuml          ; diagrams for confusing people more
        ;;purescript        ; javascript, but functional
