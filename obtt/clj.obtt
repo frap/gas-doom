@@ -6,13 +6,14 @@ Gases basic project setup for clojure app.
 * Variables
 
 - Name :: $1
-- Description :: $2
+- Description :: {$2:"Gas basic clojure setup"}
+- Version :: {$3:0.1.0}
 
 * README
 #+BEGIN_SRC org :tangle ./README.org
-#+TITLE: $1
+#+TITLE:  $1
 
-$2
+ $2
 #+END_SRC
 
 * General structure
@@ -26,7 +27,7 @@ mkdir -p src/$1 test/$1 resources/public dev
 
 * Project files
 ** deps.edn
-#+BEGIN_SRC clojure :tangle ./deps.edn
+#+BEGIN_SRC clojure :tangle ./deps.edn  :mkdirp yes :padline no
 {:paths   ["src" "resources"]
 
  :deps    {org.clojure/clojure                 {:mvn/version "1.10.1"}
@@ -83,7 +84,7 @@ mkdir -p src/$1 test/$1 resources/public dev
 Tests are important even in experimental code, blah blah...
 ** Test
 *** sample_test.cljc
-#+BEGIN_SRC clojure :tangle ./test/$1/sample_test.cljc
+#+BEGIN_SRC clojure :tangle ./test/$1/sample_test.cljc  :mkdirp yes :padline no
 (ns $1.sample-test
   (:require
    [clojure.test :refer [deftest is testing]]
@@ -100,6 +101,7 @@ Tests are important even in experimental code, blah blah...
 
 *** user.clj
 #+BEGIN_SRC clojure :tangle ./dev/user.clj :mkdirp yes :padline no
+
 (ns user
   "shamelessly copied from Juxt Edge"
   (:require
@@ -131,7 +133,8 @@ Tests are important even in experimental code, blah blah...
 #+END_SRC
 
 *** dev.clj
-#+BEGIN_SRC clojure :tangle ./dev/dev.clj
+#+BEGIN_SRC clojure :tangle ./dev/dev.clj  :mkdirp yes :padline no
+
 (ns ^{:clojure.tools.namespace.repl/load false} dev
    (:require
    [clojure.test :refer [run-tests]]
@@ -291,7 +294,7 @@ Tests are important even in experimental code, blah blah...
 #+END_SRC
 
 meta information
-#+BEGIN_SRC clojure :tangle ./src/$1/system/meta.clj
+#+BEGIN_SRC clojure :tangle ./src/$1/system/meta.clj  :mkdirp yes :padline no
 
 (ns $1.system.meta)
 
@@ -309,8 +312,9 @@ meta information
             (useful-info k (get config k) (get state k)))))
 #+END_SRC
 And the test system
-#+BEGIN_SRC clojure :tangle ./test/$1/system_test.clj
-  (ns $1.system-test
+#+BEGIN_SRC clojure :tangle ./test/$1/system_test.clj  :mkdirp yes :padline no
+
+(ns $1.system-test
   (:require
    [integrant.core :as ig]
    [$1.system]))
@@ -354,7 +358,7 @@ And the test system
 **** App
 *** Logging
 
-#+BEGIN_SRC clojure :tangle ./src/logback.xml
+#+BEGIN_SRC xml :tangle ./src/logback.xml  :mkdirp yes :padline no
 <!-- Logback Configuration. See http://logback.qos.ch/ -->
 <!-- Adapted from https://github.com/stuartsierra/log.dev/blob/master/resources/logback.xml -->
 <!-- <configuration scan="true" scanPeriod="1 seconds"> -->
@@ -450,13 +454,14 @@ And the test system
     <appender-ref ref="ALL_LOG_FILE" />
   </root>
 
-  <logger name="$1" level="DEBUG"/>
-
+  <logger name="$1" level="DEBUG">
+   <appender-ref ref="CONSOLE" />
+  </logger>
 
   <!-- Log messages from your application will be included in
        log/all.log. In addition, we will send just messages from your
        application to log/app.log -->
-  <logger name="${app_root_logger:-com.example.application}" level="ALL">
+  <logger name="${app_root_logger:-$1}" level="ALL">
     <appender-ref ref="APP_LOG_FILE" />
   </logger>
 
@@ -487,16 +492,18 @@ And the test system
 
 ***** http_server.clj
 Aleph http server
-#+BEGIN_SRC clojure :tangle ./src/$1/server/http_server.clj
+#+BEGIN_SRC clojure :tangle ./src/$1/server/http_server.clj  :mkdirp yes :padline no
 (ns $1.server.http-server
   (:require
     [aleph.http :as http]
     [byte-streams :as bs]
     [manifold.stream :as s]
     [manifold.deferred :as d]
+    [reitit.core :as r]
+    [reitit.dev.pretty :as pretty]
     [ring.middleware.params :refer [wrap-params]]
     [compojure.route :as route]
-    [compojure.core :refer [defroutes GET]]
+    [compojure.core :as compojure :refer [defroutes GET]]
     [compojure.response :refer [Renderable]]
     [integrant.core :as ig]
     [io.pedestal.log :as log]))
@@ -565,29 +572,56 @@ Aleph http server
       (GET "/numbers"       [] streaming-numbers-handler)
       (route/not-found "No such page."))))
 
+;; retit handler
+(def router
+  (r/router
+    ["/api"
+     ["/ping" ::ping]
+     ["/user/:id" ::user]]
+    {:exception pretty/exception}))
+
 (defn start-httpserver [port]
   (log/info :http-server/starting {:port port})
   (http/start-server handler {:port port})
   )
 
-(defmethod ig/init-key ::httpd
-  [_ {:keys [port]}]
-  (start-httpserver port))
+(defmethod ig/init-key :apapter/httpd [_ opts]
+  (let [handler (atom (delay (:handler opts)))
+        options (-> opts (dissoc :handler))
+        _       (log/info :http-server/starting {:port options})]
+    {:handler handler
+     :server (http/start-server (fn [req] (@@handler req)) options)}
+    ))
+
+(defmethod ig/halt-key! :adapter/httpd [_ {:keys [server]}]
+  (let [_ (log/warn :http-server/stopping)]
+    (.close server)))
+
+(defmethod ig/suspend-key! :adapter/httpd [_ {:keys [handler]}]
+  (reset! handler (promise)))
+
+(defmethod ig/resume-key :adapter/httpd [key opts old-opts old-impl]
+  (if (= (dissoc opts :handler) (dissoc old-opts :handler))
+    (do (deliver @(:handler old-impl) (:handler opts))
+        old-impl)
+    (do (ig/halt-key! key old-impl)
+        (ig/init-key key opts))))
 #+END_SRC
 
 ***** ws_server.clj
-#+BEGIN_SRC clojure :tangle ./src/$1/server/ws_server.clj
+#+BEGIN_SRC clojure :tangle ./src/$1/server/ws_server.clj  :mkdirp yes :padline no
 (ns $1.server.ws-server
   (:require
-    [aleph.http :as http]
-    [byte-streams :as bs]
-    [manifold.stream :as s]
-    [manifold.deferred :as d]
-    [ring.middleware.params :as params]
-    [compojure.route :as route]
-    [compojure.response :refer [Renderable]]
-    [integrant.core :as ig]
-    [io.pedestal.log :as log]))
+   [aleph.http :as http]
+   [byte-streams :as bs]
+   [manifold.stream :as s]
+   [manifold.deferred :as d]
+   [ring.middleware.params :as params]
+   [compojure.core :as compojure :refer [GET]]
+   [compojure.route :as route]
+   [compojure.response :refer [Renderable]]
+   [integrant.core :as ig]
+   [io.pedestal.log :as log]))
 
 (def non-websocket-request
   {:status 400
@@ -599,37 +633,58 @@ Aleph http server
    takes up a thread.  This accomplishes the same as above, but asynchronously. "
   [req]
   (-> (http/websocket-connection req)
-    (d/chain
-      (fn [socket]
-        (s/connect socket socket)))
-    (d/catch
-      (fn [_]
-        non-websocket-request))))
+      (d/chain
+       (fn [socket]
+         (s/connect socket socket)))
+      (d/catch
+          (fn [_]
+            non-websocket-request))))
 
 (def handler
   (params/wrap-params
-    (compojure/routes
-      (GET "/echo" [] echo-handler)
-      (route/not-found "No such page."))))
+   (compojure/routes
+    (GET "/echo" [] echo-handler)
+    (route/not-found "No such page."))))
 
 (defn start-wsserver [port]
   (log/info :ws-server/starting {:port port})
   (http/start-server handler {:port port})
   )
 
-(defmethod ig/init-key ::wsd
-  [_ {:keys [port]}]
-  (start-wsserver port))
+(defmethod ig/init-key :adapter/wsd [_ opts]
+  (let [handler (atom (delay (:handler opts)))
+        options (-> opts (dissoc :handler))
+        _       (log/info :ws-server/starting on {:port options})]
+    {:handler handler
+     :server (http/start-server (fn [req] (@@handler req)) options)}
+    ))
+
+(defmethod ig/halt-key! :adapter/wsd [_ {:keys [server]}]
+  (let [_ (log/warn :ws-server/stopping)]
+    (.close server)))
+
+(defmethod ig/suspend-key! ::wsd [_ {:keys [handler]}]
+  (reset! handler (promise)))
+
+(defmethod ig/resume-key ::wsd [key opts old-opts old-impl]
+  (if (= (dissoc opts :handler) (dissoc old-opts :handler))
+    (do (deliver @(:handler old-impl) (:handler opts))
+        old-impl)
+    (do (ig/halt-key! key old-impl)
+        (ig/init-key key opts))))
+
 #+END_SRC
 
 ***** udp_server.clj
 udp server with aleph
-#+BEGIN_SRC clojure :tangle ./src/$1/server/udp_server.clj
+#+BEGIN_SRC clojure :tangle ./src/$1/server/udp_server.clj  :mkdirp yes :padline no
 (ns $1.server.udp-server
   (:require
-    [aleph.http :as http]
+    [aleph.udp :as udp]
     [byte-streams :as bs]
     [manifold.stream :as s]
+    [manifold.deferred :as d]
+    [clojure.string :as str]
     [ring.middleware.params :as params]
     [compojure.route :as route]
     [compojure.response :refer [Renderable]]
@@ -640,11 +695,10 @@ udp server with aleph
   "This is the inverse operation of 'send-metrics!', taking the message, splitting it on the
    colon delimiter, and parsing the 'value'."
   [{:keys [message]}]
-  (let  [message        (bs/to-string message)]
-        [[metric value] (str/split message #":")]
-        [metric (Long/parseLong value)]
-        [_  (log/info :udp/recv {:msg message})]
-        )
+  (let  [message        (bs/to-string message)
+        [metric value] (str/split message #":")
+        _  (log/info :udp/recv {:msg message})]
+               [metric (Long/parseLong value)] ))
 
 (defn get-and-set!
   "An atomic operation which returns the previous value, and sets it to 'new-val'."
@@ -709,8 +763,8 @@ udp server with aleph
 {:http/port 5000
  :ws/port 5001
  :udp/port  5002
- :ig/system {:$1.server.http-server/httpd   {:port #ref [:http/port] }
-             :$1.server.ws-server/wsd     {:port #ref [:ws/port] }
-             :$1.server.udp-server/udpd    {:port #ref [:udp/port] }
+ :ig/system {:$1.server.http-server/httpd   {:port #ref [:http/port]  :handler :http.server.ws-server/handler }
+             :$1.server.ws-server/wsd     {:port #ref [:ws/port]  :handler :ws.server.ws-server/handler }
+             :$1.server.udp-server/udpd    {:port #ref [:udp/port]  :handler :udp.server.ws-server/handler }
              }}
 #+END_SRC
