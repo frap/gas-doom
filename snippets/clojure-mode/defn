@@ -1,8 +1,0 @@
-# -*- mode: snippet -*-
-#Author : Christopher Roach <vthakr@gmail.com>
-#name : (defn name [args] ...)
-# --
-(defn ${1:name} ${2:
-  "${3:doc-string}"
-  }[${4:args}]
-  $0)

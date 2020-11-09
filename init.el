@@ -22,11 +22,10 @@
        (:if IS-MAC
        (company +childframe) ; the ultimate code completion backend
        (company +tng))       ; tng is tab completion
-       helm              ; the *other* search engine for love and life
-       ;;ido               ; the other *other* search engine...
-;;       (:if IS-MAC
-;;         (ivy +prescient +icons +childframe)
-;;         (ivy +prescient +icons))               ; a search engine for love and life
+       ;helm              ; the *other* search engine for love and life
+         (:if IS-MAC
+         (ivy +prescient +icons +childframe)
+         (ivy +prescient +icons))               ; a search engine for love and life
 
        :ui
        ;;deft              ; notational velocity for Emacs
