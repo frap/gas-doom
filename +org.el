@@ -32,19 +32,6 @@
   :mode ("\\.obtt\\'" . org-mode)
   :init
   (setq
-;    org-babel-load-languages
-;    '((emacs-lisp . t)
-;       (shell . t)
-;       (clojure . t)
-;       (dot . t)
-;       (R . t)
-;       (sql . t)
-;       (awk . t)
-;       (css . t)
-;       (js . t)
-;       (plantuml . t)
-       ;;                                (make . t)
-;       (sed . t))
     org-structure-template-alist
     '(("a" . "export ascii")
        ("c" . "center")

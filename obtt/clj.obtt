@@ -663,7 +663,7 @@ Aleph http server
   (let [_ (log/warn :ws-server/stopping)]
     (.close server)))
 
-(defmethod ig/suspend-key! ::wsd [_ {:keys [handler]}]
+(defmethod ig/suspend-key! :adapter/wsd [_ {:keys [handler]}]
   (reset! handler (promise)))
 
 (defmethod ig/resume-key ::wsd [key opts old-opts old-impl]
@@ -730,7 +730,7 @@ udp server with aleph
     metric-stream))
 
 
-(defmethod ig/init-key ::udpd
+(defmethod ig/init-key :adapter/udpd
   [_ {:keys [port]}]
   (start-udpd-server port))
 #+END_SRC
@@ -763,8 +763,8 @@ udp server with aleph
 {:http/port 5000
  :ws/port 5001
  :udp/port  5002
- :ig/system {:$1.server.http-server/httpd   {:port #ref [:http/port]  :handler :http.server.ws-server/handler }
-             :$1.server.ws-server/wsd     {:port #ref [:ws/port]  :handler :ws.server.ws-server/handler }
-             :$1.server.udp-server/udpd    {:port #ref [:udp/port]  :handler :udp.server.ws-server/handler }
+ :ig/system {:adapter/httpd   {:port #ref [:http/port]  :handler :$1.server.http-server/handler }
+             :adapter/wsd     {:port #ref [:ws/port]  :handler :$1.server.ws-server/handler }
+             :adapter/udpd    {:port #ref [:udp/port] }
              }}
 #+END_SRC
