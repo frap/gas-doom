@@ -20,6 +20,7 @@
   :config
   (require 'flycheck-clj-kondo))
 
+(add-hook!  prog-mode-hook #'smartparens-global-strict-mode)
 
 (after! tramp
   (setenv "SHELL" "/bin/bash")
