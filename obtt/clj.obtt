@@ -27,7 +27,7 @@ mkdir -p src/$1 test/$1 resources/public dev
 
 * Project files
 ** deps.edn
-#+BEGIN_SRC clojure :tangle ./deps.edn  :mkdirp yes :padline no
+#+BEGIN_SRC clojure :tangle ./deps.edn  :mkdirp yes :comments yes
 {:paths   ["src" "resources"]
 
  :deps    {org.clojure/clojure                 {:mvn/version "1.10.1"}
@@ -65,8 +65,15 @@ mkdir -p src/$1 test/$1 resources/public dev
                                                                   :exclusions [fipp/fipp]}
                                      fipp/fipp                   {:mvn/version "0.6.23"}
                                      integrant/repl              {:mvn/version "0.3.2"}
-                                     org.clojure/tools.namespace {:mvn/version "1.0.0"}}
+                                     org.clojure/tools.namespace {:mvn/version "1.0.0"}
+                                     clj-kondo/clj-kondo         {:mvn/version "RELEASE"}}
                        }
+             :test {:main-opts   ["-m" "kaocha.runner"]
+                :extra-paths ["test"]
+                :extra-deps  {org.clojure/test.check {:mvn/version "1.0.0"}
+                              metosin/reitit {:mvn/version "0.5.10"}
+                              orchestra/orchestra {:mvn/version "2020.09.18-1"}
+                              lambdaisland/kaocha    {:mvn/version "1.0.700"}}}
             }
  }
 #+END_SRC
@@ -83,24 +90,153 @@ mkdir -p src/$1 test/$1 resources/public dev
          (fill-column . 80)
          )))
 #+END_SRC
+gitignore for clojure
+#+BEGIN_SRC sh :tangle ./.gitignore
+.cpcache/
+.idea/
+
+*.iml
+.nrepl-port
+*.lst
+*.properties
+*.jar
+#+END_SRC
+
+** clj-kondo
+#+BEGIN_SRC clojure :tangle ./.clj-kondo/config.edn
+{:skip-comments true
+ :linters {:missing-else-branch {:level :off}}}
+#+END_SRC
+
 
 * Testing
 
 Tests are important even in experimental code, blah blah...
 ** Test
-*** sample_test.cljc
-#+BEGIN_SRC clojure :tangle ./test/$1/sample_test.cljc  :mkdirp yes :padline no
-(ns $1.sample-test
+
+*** kaocha setup
+set up test file
+#+BEGIN_SRC sh :tangle ./bin/kaocha
+#!/usr/bin/env bash
+
+clojure -M:test "$@"
+#+END_SRC
+
+#+BEGIN_SRC clojure :tangle ./tests.edn
+#kaocha/v1
+{:tests [{:id          :unit
+          :test-paths  ["test"]
+          :ns-patterns [".*"]}]
+ :plugins [:orchestra
+           :preloads]
+ :kaocha.plugin.preloads/ns-names [$1.specs]}
+#+END_SRC
+
+*** core_test.cljc
+#+BEGIN_SRC clojure :tangle ./test/$1/core_test.cljc  :mkdirp yes :padline no
+(ns $1.core-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [clojure.spec.alpha :as s]
+   [$1.specs]
+   [expound.alpha :as expound]
+   [clojure.string :as str]
    ))
 
-                                        ; Tests for both client and server
+(set! s/*explain-out* (expound/custom-printer {}))
+ ; Tests for both client and server
 (deftest sample-test
   (testing "addition computes addition correctly"
     (is  = (+ 5 -3) 2 )))
 
 #+END_SRC
+spec setup
+#+BEGIN_SRC clojure :tangle ./src/$1/specs.cljc
+(ns $1.specs
+  (:require [clojure.spec.alpha :as s]))
+
+(s/def :cors.config/max-age pos-int?)
+(s/def :cors.config/origins (s/or :static-origins (s/+ string?)
+                                  :any-origin #(= "*" %)
+                                  :fn-origin #(or (fn? %) (set? %))))
+(s/def :cors.config/allow-credentials? boolean?)
+#+END_SRC
+
+data tests
+#+BEGIN_SRC clojure :tangle ./test/$1/data.cljc
+(ns $1.data)
+
+(def ok-response {:status 200 :body "OK"})
+
+(defn ok-handler
+  ([_] ok-response)
+  ([_ respond raise] (respond ok-response)))
+
+(defn ok-future-handler
+  ([_] ok-response)
+  ([_ respond raise] (respond (future ok-response))))
+
+(def cors-config {:allowed-request-methods [:post :get]
+                  :allowed-request-headers ["Authorization"]
+                  :origins ["https://yahoo.com"
+                            "https://google.com"]
+                  :max-age 300})
+
+(def normal-preflight-request
+  {:request-method :options
+   :uri "/api"
+   :headers {"origin" "https://yahoo.com"
+             "access-control-request-headers" "authorization"
+             "access-control-request-method" "POST"}})
+
+(def normal-preflight-response
+  {:headers {"access-control-allow-headers" "Authorization"
+             "access-control-allow-methods" "POST, GET"
+             "access-control-allow-origin" "https://yahoo.com"
+             "access-control-max-age" 300
+             "vary" "https://yahoo.com"}
+   :status 200})
+
+(def normal-cors-request
+  {:request-method :post
+   :uri "/api"
+   :headers {"origin" "https://yahoo.com"
+             "access-control-request-headers" "authorization,content-type"
+             "access-control-request-method" "POST"}})
+
+(def normal-cors-response
+  (merge ok-response
+         {:headers {"access-control-allow-origin" "https://yahoo.com"
+                    "vary" "https://yahoo.com"}}))
+
+(def normal-non-cors-request
+  {:request-method :post
+   :uri "/api"})
+
+(def dirty-non-cors-request
+  {:request-method :post
+   :uri "/api"
+   :headers {"access-control-request-headers" "authorization,content-type"
+             "access-control-request-method" "POST"}})
+
+(def normal-non-cors-response ok-response)
+
+(def cross-origin-cors-request
+  {:request-method :post
+   :uri "/api"
+   :headers {"origin" "https://not.exists.in.config"
+             "access-control-request-headers" "authorization,content-type"
+             "access-control-request-method" "POST"}})
+
+(def cross-origin-preflight-request
+  {:request-method :options
+   :uri "/api"
+   :headers {"origin" "https://not.exists.in.config"
+             "access-control-request-headers" "authorization,content-type"
+             "access-control-request-method" "POST"}})
+
+#+END_SRC
+
 * Sources
 ** Dev
 
