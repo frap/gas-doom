@@ -115,11 +115,85 @@ Tests are important even in experimental code, blah blah...
 ** Test
 
 *** kaocha setup
-set up test file
-#+BEGIN_SRC sh :tangle ./bin/kaocha
+set up kaocha  test file
+#+BEGIN_SRC sh :tangle (identity #o755) ./bin/kaocha
 #!/usr/bin/env bash
 
 clojure -M:test "$@"
+#+END_SRC
+
+babashka test runner
+#+BEGIN_SRC clojure :tangle (identity #o755) ./bin/test-runner.clj :comments link
+#!/usr/bin/env bb
+
+(import java.lang.ProcessBuilder$Redirect)
+
+(defn test-runner []
+  (let [cmd ["clojure" "-M:test" "--watch" "--no-color"]
+        pb  (ProcessBuilder. cmd)
+        proc (.start pb)
+        out (.getInputStream proc)]
+    (-> (Runtime/getRuntime)
+        (.addShutdownHook (Thread. #(.destroy proc))))
+    {:proc proc
+     :out out}))
+
+(require '[clojure.string :as str])
+
+(defn process-line
+  "Returns EDN representation of test runner output."
+  [line]
+  (when (re-matches #"\d+ tests.*" line)
+    (let [splits (str/split line #"[,.]\s*")
+          keyvals (map (fn [s]
+                         (let [[n k] (str/split s #" ")]
+                           [(keyword k) (Integer. n)]))
+                       splits)]
+      (into {:failures 0 :errors 0} ;; defaults
+            keyvals))))
+
+
+(defn stderr
+  "Prints line to stderr and returns line."
+  [line]
+  (binding [*out* *err*]
+    (println line))
+  line)
+
+(require '[clojure.java.io :as io])
+
+(defn watch
+  "Starts test-runner and calls `callback` on EDN representation of output."
+  [callback]
+  (let [runner (test-runner)]
+    (with-open [reader (io/reader (:out runner))]
+      (let [lines (line-seq reader)
+            lines (keep (comp process-line stderr) lines)]
+        (run! callback lines)))))
+
+(defn packet
+  "Returns UDP packet"
+  [data port]
+  (let [bytes (.getBytes data)
+        host (java.net.InetAddress/getByName "localhost")]
+    (java.net.DatagramPacket. bytes (count bytes)
+                              host
+                              port)))
+
+(defn send-data
+  "Sends to default AnyBar port 1738"
+  [data]
+  (.send (java.net.DatagramSocket.)
+         (packet data 1738)))
+
+
+(defn callback [{:keys [:failures :errors]}]
+  (if (or (pos? failures)
+          (pos? errors))
+    (send-data "red")
+    (send-data "green")))
+    
+(watch callback)
 #+END_SRC
 
 #+BEGIN_SRC clojure :tangle ./tests.edn
@@ -133,7 +207,7 @@ clojure -M:test "$@"
 #+END_SRC
 
 *** core_test.cljc
-#+BEGIN_SRC clojure :tangle ./test/$1/core_test.cljc  :mkdirp yes :padline no
+#+BEGIN_SRC clojure :tangle ./test/$1/core_test.cljc  :mkdirp yes :comments link
 (ns $1.core-test
   (:require
    [clojure.test :refer [deftest is testing]]
@@ -241,8 +315,7 @@ data tests
 ** Dev
 
 *** user.clj
-#+BEGIN_SRC clojure :tangle ./dev/user.clj :mkdirp yes :padline no
-
+#+BEGIN_SRC clojure :tangle ./dev/user.clj :mkdirp yes :comments link
 (ns user
   "shamelessly copied from Juxt Edge"
   (:require
@@ -435,8 +508,7 @@ data tests
 #+END_SRC
 
 meta information
-#+BEGIN_SRC clojure :tangle ./src/$1/system/meta.clj  :mkdirp yes :padline no
-
+#+BEGIN_SRC clojure :tangle ./src/$1/system/meta.clj  :mkdirp yes
 (ns $1.system.meta)
 
 (defmulti useful-info (fn [k config state]
@@ -453,8 +525,7 @@ meta information
             (useful-info k (get config k) (get state k)))))
 #+END_SRC
 And the test system
-#+BEGIN_SRC clojure :tangle ./test/$1/system_test.clj  :mkdirp yes :padline no
-
+#+BEGIN_SRC clojure :tangle ./test/$1/system_test.clj  :mkdirp yes
 (ns $1.system-test
   (:require
    [integrant.core :as ig]
@@ -465,7 +536,7 @@ And the test system
 (defmacro ^:private with-system
   [system ks & body]
   \`(let [system# ~system
-         s# (ig/init system# (or ~ks (keys system#)))]
+          s# (ig/init system# (or ~ks (keys system#)))]
      (try
        (binding [*system* s#]
          ~@body)
@@ -499,7 +570,7 @@ And the test system
 **** App
 *** Logging
 
-#+BEGIN_SRC xml :tangle ./src/logback.xml  :mkdirp yes :padline no
+#+BEGIN_SRC nxml :tangle ./src/logback.xml  :mkdirp yes
 <!-- Logback Configuration. See http://logback.qos.ch/ -->
 <!-- Adapted from https://github.com/stuartsierra/log.dev/blob/master/resources/logback.xml -->
 <!-- <configuration scan="true" scanPeriod="1 seconds"> -->
@@ -612,7 +683,7 @@ And the test system
 
 ***** http_server.clj
 Aleph http server
-#+BEGIN_SRC clojure :tangle ./src/$1/server/http_server.clj  :mkdirp yes :padline no
+#+BEGIN_SRC clojure :tangle ./src/$1/server/http_server.clj  :mkdirp yes
 (ns $1.server.http-server
   (:require
     [aleph.http :as http]
